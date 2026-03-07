@@ -56,21 +56,19 @@ exports.githubLogin = (req, res, next) => {
  */
 exports.githubCallback = [
   (req, res, next) => {
+    const state = req.query.state || '';
+    
+    // 绑定模式：跳过 passport，直接手动处理
+    if (state.startsWith('bind_')) {
+      req.oauthState = state;
+      return next();
+    }
+    
+    // 登录模式：使用 passport
     passport.authenticate('github', { session: false }, async (err, user, info) => {
       if (err) {
         return res.redirect(buildCallbackUrl({ error: err.message, provider: 'github' }));
       }
-      
-      const state = req.query.state || '';
-      
-      // 检查是否是绑定操作（state 以 bind_ 开头）
-      if (state.startsWith('bind_')) {
-        // 绑定模式：需要手动获取 profile 并绑定到指定用户
-        req.bindUserId = parseInt(state.replace('bind_', ''), 10);
-        req.oauthProfile = info?.profile;
-        req.oauthTokens = { accessToken: info?.accessToken, refreshToken: info?.refreshToken };
-      }
-      
       req.user = user;
       req.oauthState = state;
       next();
@@ -79,9 +77,9 @@ exports.githubCallback = [
   asyncHandler(async (req, res) => {
     const state = req.oauthState || '';
     
-    // 绑定模式
+    // 绑定模式 - 手动处理 OAuth 流程
     if (state.startsWith('bind_')) {
-      const userId = req.bindUserId;
+      const userId = parseInt(state.replace('bind_', ''), 10);
       const code = req.query.code;
       
       if (!code) {
@@ -129,6 +127,7 @@ exports.githubCallback = [
         
         return res.redirect(buildCallbackUrl({ success: 'true', provider: 'github', action: 'bind' }));
       } catch (error) {
+        console.error('GitHub bind error:', error.response?.data || error.message);
         const errorMsg = error.message || '绑定失败';
         return res.redirect(buildCallbackUrl({ error: errorMsg, provider: 'github', action: 'bind' }));
       }
@@ -162,19 +161,28 @@ exports.googleLogin = (req, res, next) => {
  */
 exports.googleCallback = [
   (req, res, next) => {
+    const state = req.query.state || '';
+    
+    // 绑定模式：跳过 passport，直接手动处理
+    if (state.startsWith('bind_')) {
+      req.oauthState = state;
+      return next();
+    }
+    
+    // 登录模式：使用 passport
     passport.authenticate('google', { session: false }, async (err, user) => {
       if (err) {
         return res.redirect(buildCallbackUrl({ error: err.message, provider: 'google' }));
       }
       req.user = user;
-      req.oauthState = req.query.state || '';
+      req.oauthState = state;
       next();
     })(req, res, next);
   },
   asyncHandler(async (req, res) => {
     const state = req.oauthState || '';
     
-    // 绑定模式
+    // 绑定模式 - 手动处理 OAuth 流程
     if (state.startsWith('bind_')) {
       const userId = parseInt(state.replace('bind_', ''), 10);
       const code = req.query.code;
@@ -217,6 +225,7 @@ exports.googleCallback = [
         
         return res.redirect(buildCallbackUrl({ success: 'true', provider: 'google', action: 'bind' }));
       } catch (error) {
+        console.error('Google bind error:', error.response?.data || error.message);
         const errorMsg = error.message || '绑定失败';
         return res.redirect(buildCallbackUrl({ error: errorMsg, provider: 'google', action: 'bind' }));
       }
@@ -247,19 +256,28 @@ exports.giteeLogin = (req, res, next) => {
  */
 exports.giteeCallback = [
   (req, res, next) => {
+    const state = req.query.state || '';
+    
+    // 绑定模式：跳过 passport，直接手动处理
+    if (state.startsWith('bind_')) {
+      req.oauthState = state;
+      return next();
+    }
+    
+    // 登录模式：使用 passport
     passport.authenticate('gitee', { session: false }, async (err, user) => {
       if (err) {
         return res.redirect(buildCallbackUrl({ error: err.message, provider: 'gitee' }));
       }
       req.user = user;
-      req.oauthState = req.query.state || '';
+      req.oauthState = state;
       next();
     })(req, res, next);
   },
   asyncHandler(async (req, res) => {
     const state = req.oauthState || '';
     
-    // 绑定模式
+    // 绑定模式 - 手动处理 OAuth 流程
     if (state.startsWith('bind_')) {
       const userId = parseInt(state.replace('bind_', ''), 10);
       const code = req.query.code;
@@ -272,14 +290,17 @@ exports.giteeCallback = [
         const config = environment.get();
         const axios = require('axios');
         
-        // 获取 access_token
-        const tokenRes = await axios.post('https://gitee.com/oauth/token', null, {
-          params: {
-            grant_type: 'authorization_code',
-            client_id: config.oauth.gitee.clientId,
-            client_secret: config.oauth.gitee.clientSecret,
-            code,
-            redirect_uri: config.oauth.gitee.callbackURL,
+        // 获取 access_token - Gitee 要求使用 POST 请求体
+        const tokenRes = await axios.post('https://gitee.com/oauth/token', {
+          grant_type: 'authorization_code',
+          client_id: config.oauth.gitee.clientId,
+          client_secret: config.oauth.gitee.clientSecret,
+          code,
+          redirect_uri: config.oauth.gitee.callbackURL,
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
         });
         
@@ -303,7 +324,8 @@ exports.giteeCallback = [
         
         return res.redirect(buildCallbackUrl({ success: 'true', provider: 'gitee', action: 'bind' }));
       } catch (error) {
-        const errorMsg = error.message || '绑定失败';
+        console.error('Gitee bind error:', error.response?.data || error.message);
+        const errorMsg = error.response?.data?.error_description || error.message || '绑定失败';
         return res.redirect(buildCallbackUrl({ error: errorMsg, provider: 'gitee', action: 'bind' }));
       }
     }

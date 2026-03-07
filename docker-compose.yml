@@ -1,215 +1,70 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  # 前端服务
-  blog-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-        - VITE_SOCKET_URL=${VITE_SOCKET_URL}
-        - VITE_SOCKET_WS_URL=${VITE_SOCKET_WS_URL}
-        - VITE_SOCKET_IO_AUTH_KEY=${VITE_SOCKET_IO_AUTH_KEY}
-        - VITE_APP_TITLE=${VITE_APP_TITLE}
-        - VITE_APP_DESCRIPTION=${VITE_APP_DESCRIPTION}
-        - VITE_APP_VERSION=${VITE_APP_VERSION:-1.0.0}
-        - VITE_APP_AUTHOR=${VITE_APP_AUTHOR:-adnaan}
-    container_name: blog-frontend
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-    environment:
-      - NODE_ENV=production
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-      - VITE_SOCKET_URL=${VITE_SOCKET_URL}
-      - VITE_SOCKET_WS_URL=${VITE_SOCKET_WS_URL}
-      - VITE_SOCKET_IO_AUTH_KEY=${VITE_SOCKET_IO_AUTH_KEY}
-      - VITE_APP_TITLE=${VITE_APP_TITLE}
-      - VITE_APP_DESCRIPTION=${VITE_APP_DESCRIPTION}
-      - VITE_APP_VERSION=${VITE_APP_VERSION:-1.0.0}
-      - VITE_APP_AUTHOR=${VITE_APP_AUTHOR:-adnaan}
-    volumes:
-      - ./backend/uploads:/usr/share/nginx/html/uploads:ro # 挂载上传文件目录
-    networks:
-      - blog-network
-    depends_on:
-      - blog-backend
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:80/",
-          "||",
-          "exit",
-          "1",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   # 后端服务
-  blog-backend:
+  backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: blog-backend
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    restart: always
+    ports:
+      - "8200:8200"
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=production
-      - PORT=${PORT:-8200}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1d}
-      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=${REDIS_DB:-1}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - LOG_FILE_PATH=${LOG_FILE_PATH:-./logs}
-      - ENABLE_MONITORING=${ENABLE_MONITORING:-true}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      - SOCKET_IO_ENABLED=${SOCKET_IO_ENABLED:-true}
-      - SOCKET_IO_AUTH_KEY=${SOCKET_IO_AUTH_KEY}
-      - SOCKET_IO_CORS_ORIGIN=${SOCKET_IO_CORS_ORIGIN}
-      - SOCKET_IO_PING_TIMEOUT=${SOCKET_IO_PING_TIMEOUT:-60000}
-      - SOCKET_IO_PING_INTERVAL=${SOCKET_IO_PING_INTERVAL:-25000}
-      - SOCKET_IO_MAX_HTTP_BUFFER_SIZE=${SOCKET_IO_MAX_HTTP_BUFFER_SIZE:-1000000}
-      - SOCKET_IO_TRANSPORTS=${SOCKET_IO_TRANSPORTS:-polling,websocket}
-      - SOCKET_IO_UPGRADE_TIMEOUT=${SOCKET_IO_UPGRADE_TIMEOUT:-10000}
-      - SOCKET_IO_PATH=${SOCKET_IO_PATH:-/socket.io}
-      # AI 服务配置（新格式）
-      - AI_PROVIDER=${AI_PROVIDER:-zhipu}
-      - AI_API_KEY=${AI_API_KEY}
-      - AI_MODEL=${AI_MODEL}
-      - AI_BASE_URL=${AI_BASE_URL}
-      - AI_TEMPERATURE=${AI_TEMPERATURE:-0.7}
-      - AI_MAX_TOKENS=${AI_MAX_TOKENS:-2000}
-      # AI 请求配置
-      - AI_TIMEOUT=${AI_TIMEOUT:-30000}
-      - AI_MAX_RETRIES=${AI_MAX_RETRIES:-3}
-      - AI_RETRY_DELAY=${AI_RETRY_DELAY:-1000}
-      # AI 并发控制
-      - AI_MAX_CONCURRENT_PER_USER=${AI_MAX_CONCURRENT_PER_USER:-3}
-      # AI 历史消息配置
-      - AI_MAX_HISTORY_MESSAGES=${AI_MAX_HISTORY_MESSAGES:-20}
-      # AI 默认 Prompt 类型
-      - AI_DEFAULT_PROMPT_TYPE=${AI_DEFAULT_PROMPT_TYPE:-WRITING}
-      # 数据库连接池配置
-      - DB_POOL_MAX=${DB_POOL_MAX:-20}
-      - DB_POOL_MIN=${DB_POOL_MIN:-5}
-      - DB_POOL_ACQUIRE=${DB_POOL_ACQUIRE:-30000}
-      - DB_POOL_IDLE=${DB_POOL_IDLE:-10000}
-      # 第三方登录配置
-      - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID:-}
-      - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET:-}
-      - GITHUB_OAUTH_CALLBACK_URL=${GITHUB_OAUTH_CALLBACK_URL:-}
-      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
-      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-}
-      - GOOGLE_OAUTH_CALLBACK_URL=${GOOGLE_OAUTH_CALLBACK_URL:-}
-      - GITEE_OAUTH_CLIENT_ID=${GITEE_OAUTH_CLIENT_ID:-}
-      - GITEE_OAUTH_CLIENT_SECRET=${GITEE_OAUTH_CLIENT_SECRET:-}
-      - GITEE_OAUTH_CALLBACK_URL=${GITEE_OAUTH_CALLBACK_URL:-}
-      - OAUTH_FRONTEND_CALLBACK_URL=${OAUTH_FRONTEND_CALLBACK_URL:-}
-    networks:
-      - blog-network
-    depends_on:
-      - mysql
-      - redis
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      # 数据库连接配置
+      DB_HOST: mysql8
+      DB_PORT: 3306
+      DB_NAME: blog_prod
+      DB_USER: blog_user
+      DB_PASSWORD: du_adnaan@
+      # Redis 连接配置
+      REDIS_HOST: redis7
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+      REDIS_PASSWORD: du_adnaan@
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/uploads:/app/uploads
-      - /etc/localtime:/etc/localtime:ro # 同步时区
     healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "const http = require('http'); const options = { hostname: 'localhost', port: 8200, path: '/api/system/health', timeout: 3000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();",
-        ]
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 8200, path: '/api/system/health', timeout: 3000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
       interval: 30s
       timeout: 10s
-      retries: 3
       start_period: 40s
+      retries: 3
+    networks:
+      - default
 
-  # MySQL数据库
-  mysql:
-    image: mysql:8.0
-    container_name: blog-mysql
-    restart: unless-stopped
-    ports:
-      - "3306:3306" # 本地开发时映射端口
+  # 前端构建服务（仅构建静态文件）
+  frontend-builder:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.build
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://www.adnaan.site}
+        VITE_SOCKET_WS_URL: ${VITE_SOCKET_WS_URL:-ws://www.adnaan.site}
+        VITE_SOCKET_IO_AUTH_KEY: ${VITE_SOCKET_IO_AUTH_KEY:-duyong-socket-328}
+        VITE_APP_TITLE: ${VITE_APP_TITLE:-博客系统}
+        VITE_APP_DESCRIPTION: ${VITE_APP_DESCRIPTION:-基于Node.js的现代化博客系统}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-1.0.0}
+        VITE_APP_AUTHOR: ${VITE_APP_AUTHOR:-adnaan}
+    container_name: blog-frontend-builder
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_CHARACTER_SET_SERVER: ${MYSQL_CHARACTER_SET_SERVER:-utf8mb4}
-      MYSQL_COLLATION_SERVER: ${MYSQL_COLLATION_SERVER:-utf8mb4_unicode_ci}
+      TZ: Asia/Shanghai
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./backend/scripts:/docker-entrypoint-initdb.d
+      # 将构建产物输出到公共 Nginx 的 html 目录
+      - /home/base/nginx/html:/output
     networks:
-      - blog-network
-    command: --default-authentication-plugin=mysql_native_password
+      - default
 
-  # Redis缓存
-  redis:
-    image: redis:7-alpine
-    container_name: blog-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379" # 本地开发时映射端口
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
-    networks:
-      - blog-network
-    command: redis-server --requirepass ${REDIS_PASSWORD:-}
-
-  # Nginx反向代理
-  nginx:
-    image: nginx:alpine
-    container_name: blog-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-      - ./docker/nginx/logs:/var/log/nginx
-    networks:
-      - blog-network
-    depends_on:
-      - blog-frontend
-      - blog-backend
-
-volumes:
-  mysql_data:
-  redis_data:
-
+# 使用预先创建的共享网络
 networks:
-  blog-network:
-    driver: bridge
+  default:
+    name: blog_network
+    external: true

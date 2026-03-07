@@ -1,0 +1,42 @@
+# 仅构建静态文件的 Dockerfile
+FROM node:22-alpine
+
+WORKDIR /app
+
+# 设置国内镜像源
+RUN npm config set registry https://registry.npmmirror.com
+
+# 复制依赖文件
+COPY package*.json ./
+
+# 清理并重新安装依赖（解决rollup可选依赖问题）
+RUN rm -rf node_modules package-lock.json && npm install
+
+# 复制源代码
+COPY . .
+
+# 声明构建时需要的环境变量
+ARG VITE_API_BASE_URL
+ARG VITE_SOCKET_URL
+ARG VITE_SOCKET_WS_URL
+ARG VITE_SOCKET_IO_AUTH_KEY
+ARG VITE_APP_TITLE
+ARG VITE_APP_DESCRIPTION
+ARG VITE_APP_VERSION
+ARG VITE_APP_AUTHOR
+
+# 设置环境变量供构建时使用
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+ENV VITE_SOCKET_WS_URL=$VITE_SOCKET_WS_URL
+ENV VITE_SOCKET_IO_AUTH_KEY=$VITE_SOCKET_IO_AUTH_KEY
+ENV VITE_APP_TITLE=$VITE_APP_TITLE
+ENV VITE_APP_DESCRIPTION=$VITE_APP_DESCRIPTION
+ENV VITE_APP_VERSION=$VITE_APP_VERSION
+ENV VITE_APP_AUTHOR=$VITE_APP_AUTHOR
+
+# 构建应用
+RUN npm run build
+
+# 启动时将构建产物复制到挂载的 volume，然后保持运行
+CMD ["sh", "-c", "cp -r /app/dist/* /output/ && echo 'Frontend build completed and copied to /output' && tail -f /dev/null"]

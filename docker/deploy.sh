@@ -45,10 +45,10 @@ start_services() {
     cd "$PROJECT_ROOT"
     docker-compose up -d
     echo -e "${GREEN}服务启动完成！${NC}"
-    echo -e "${GREEN}前端: http://www.adnaan.cn${NC}"
-    echo -e "${GREEN}后端API: http://api.adnaan.cn${NC}"
-    echo -e "${GREEN}Socket.IO: http://api.adnaan.cn/socket.io (自动升级到WebSocket)${NC}"
-    echo -e "${YELLOW}Socket.IO健康检查: http://api.adnaan.cn/api/socket/health${NC}"
+    echo -e "${GREEN}前端: http://www.adnaan.site${NC}"
+    echo -e "${GREEN}后端API: http://api.adnaan.site${NC}"
+    echo -e "${GREEN}Socket.IO: http://api.adnaan.site/socket.io (自动升级到WebSocket)${NC}"
+    echo -e "${YELLOW}Socket.IO健康检查: http://api.adnaan.site/api/socket/health${NC}"
 }
 
 # 停止服务

@@ -37,6 +37,8 @@ export default function OAuthButtons({ mode = 'login', onBindSuccess }: OAuthBut
   const providers: OAuthProvider[] = ['github', 'gitee', 'google'];
 
   const handleClick = (provider: OAuthProvider) => {
+    console.log('handleClick:', provider, 'mode:', mode, 'isBound:', isBound(provider), 'bindings:', bindings);
+    
     if (mode === 'login') {
       loginWithOAuth(provider);
     } else {
@@ -45,9 +47,15 @@ export default function OAuthButtons({ mode = 'login', onBindSuccess }: OAuthBut
           title: '确认解绑',
           content: `确定要解绑 ${getProviderName(provider)} 账号吗？`,
           onOk: async () => {
-            const success = await unbindOAuth(provider);
-            if (success && onBindSuccess) {
-              onBindSuccess();
+            try {
+              console.log('开始解绑:', provider);
+              const success = await unbindOAuth(provider);
+              console.log('解绑结果:', success);
+              if (success && onBindSuccess) {
+                onBindSuccess();
+              }
+            } catch (error) {
+              console.error('解绑失败:', error);
             }
           },
         });
