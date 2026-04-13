@@ -1,4 +1,4 @@
-const { SiteSettings } = require('../models');
+const { SiteSettings, User } = require('../models');
 const { AppError } = require('@/utils/response');
 
 class SiteSettingsService {
@@ -9,13 +9,24 @@ class SiteSettingsService {
     const settings = await SiteSettings.findOne({
       // 单站长架构：始终使用第一条记录作为全站唯一站点配置
       order: [['id', 'ASC']],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['avatar'],
+        },
+      ],
     });
 
     if (!settings) {
       throw new AppError('网站设置不存在', 404);
     }
 
-    return settings;
+    // 将管理员的 avatar 添加到返回结果中
+    return {
+      ...settings.toJSON(),
+      avatar: settings.user?.avatar || null,
+    };
   }
 
   /**
