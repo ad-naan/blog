@@ -24,17 +24,19 @@ export { useSiteSettings } from './hooks';
 // 定义页面主体样式
 const MainContainer = styled.div`
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow-x: clip;
 `;
 
 // 内容区域样式 - 个人中心独立，无需预留header
 const Content = styled.main<{ isProfileContext?: boolean }>`
   flex: 1;
-  width: 100vw;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   overflow: visible;
   margin-top: ${(props) => (props.isProfileContext ? '0' : 'var(--header-height)')};
@@ -44,6 +46,7 @@ const Content = styled.main<{ isProfileContext?: boolean }>`
     padding: ${(props) => (props.isProfileContext ? '0' : '1.5rem 1.25rem')};
   }
 `;
+
 
 // 加载指示器样式
 const LoadingIndicator = styled(motion.div)`

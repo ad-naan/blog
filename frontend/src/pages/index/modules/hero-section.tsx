@@ -70,12 +70,14 @@ const HeroContent = styled(motion.div)`
 const CardStackContainer = styled(motion.div)`
   position: relative;
   width: 420px;
+  max-width: 100%;
   height: 520px;
   perspective: 1000px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  overflow: hidden;
 
   @media (max-width: 968px) {
     width: 100%;
@@ -91,6 +93,7 @@ const CardStackContainer = styled(motion.div)`
     margin-top: 0.5rem;
   }
 `;
+
 
 const CodeWindow = styled(motion.div)`
   position: absolute;
