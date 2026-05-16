@@ -1,45 +1,58 @@
 version: '3.8'
 
+# 接入公共网络（固定，所有项目都一样）
+networks:
+  default:
+    external: true
+    name: base-service_base-net
+
 services:
   # 后端服务
-  backend:
+  blog-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: blog-backend
     restart: always
-    ports:
-      - "8200:8200"
+    # 安全：不对外暴露端口，只内网访问
+    # ports:
+    #   - "8200:8200"
     env_file:
       - .env
     environment:
       TZ: Asia/Shanghai
       NODE_ENV: production
-      # 数据库连接配置
-      DB_HOST: mysql8
+
+      # ======================
+      # 公共 MySQL（新密码）
+      # ======================
+      DB_HOST: base-mysql
       DB_PORT: 3306
       DB_NAME: blog_prod
-      DB_USER: blog_user
-      DB_PASSWORD: du_adnaan@
-      # Redis 连接配置
-      REDIS_HOST: redis7
+      DB_USER: root
+      DB_PASSWORD: du@adnaan#328
+
+      # ======================
+      # 公共 Redis（新密码）
+      # ======================
+      REDIS_HOST: base-redis
       REDIS_PORT: 6379
       REDIS_DB: 1
-      REDIS_PASSWORD: du_adnaan@
+      REDIS_PASSWORD: du@adnaan#328
+
     volumes:
       - ./backend/logs:/app/logs
       - ./backend/uploads:/app/uploads
+
     healthcheck:
       test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 8200, path: '/api/system/health', timeout: 3000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.on('timeout', () => process.exit(1)); req.end();"]
       interval: 30s
       timeout: 10s
       start_period: 40s
       retries: 3
-    networks:
-      - default
 
-  # 前端构建服务（仅构建静态文件）
-  frontend-builder:
+  # 前端构建（打包后直接输出到公共 Nginx）
+  blog-frontend-builder:
     build:
       context: ./frontend
       dockerfile: Dockerfile.build
@@ -58,13 +71,4 @@ services:
     environment:
       TZ: Asia/Shanghai
     volumes:
-      # 将构建产物输出到公共 Nginx 的 html 目录
-      - /home/base/nginx/html:/output
-    networks:
-      - default
-
-# 使用预先创建的共享网络
-networks:
-  default:
-    name: blog_network
-    external: true
+      - /home/adnaan/project/base-service/nginx/html/blog:/output

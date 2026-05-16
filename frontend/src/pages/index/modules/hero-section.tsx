@@ -69,7 +69,7 @@ const HeroContent = styled(motion.div)`
 
 const CardStackContainer = styled(motion.div)`
   position: relative;
-  width: 420px;
+  width: min(420px, 100%);
   max-width: 100%;
   height: 520px;
   perspective: 1000px;
@@ -81,23 +81,22 @@ const CardStackContainer = styled(motion.div)`
 
   @media (max-width: 968px) {
     width: 100%;
-    height: 400px; /* Slightly increased for visibility */
+    max-width: 420px;
+    height: 400px;
     order: 1;
-    margin-bottom: 2rem; /* More space between card and footer */
-    transform: scale(0.95);
+    margin: 0 auto 2rem;
+    transform: none;
   }
 
   @media (max-width: 768px) {
     height: 340px;
-    transform: scale(0.85);
     margin-top: 0.5rem;
   }
 `;
 
-
 const CodeWindow = styled(motion.div)`
   position: absolute;
-  width: 340px;
+  width: min(340px, calc(100% - 1.5rem));
   height: 220px;
   background: #1e1e1e;
   border-radius: 12px;
@@ -111,8 +110,8 @@ const CodeWindow = styled(motion.div)`
   overflow: hidden;
   z-index: 1;
   transform-origin: center center;
+  box-sizing: border-box;
 
-  /* Window Controls */
   &::before {
     content: '';
     position: absolute;
@@ -130,8 +129,10 @@ const CodeWindow = styled(motion.div)`
   @media (max-width: 768px) {
     left: 50%;
     right: auto;
-    margin-left: -170px;
-    top: 0; /* Move to top */
+    width: min(340px, calc(100% - 1.5rem));
+    transform: translateX(-50%);
+    margin-left: 0;
+    top: 0;
   }
 
   [data-theme='light'] & {
@@ -153,16 +154,16 @@ const CodeContent = styled.div`
 
   .k {
     color: #cc7832;
-  } /* keyword */
+  }
   .s {
     color: #6a8759;
-  } /* string */
+  }
   .f {
     color: #ffc66d;
-  } /* function */
+  }
   .c {
     color: #808080;
-  } /* comment */
+  }
 
   [data-theme='light'] & {
     .k {
@@ -182,7 +183,7 @@ const CodeContent = styled.div`
 
 const ProfileGlassCard = styled(motion.div)`
   position: absolute;
-  width: 300px;
+  width: min(300px, calc(100% - 2rem));
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -198,11 +199,14 @@ const ProfileGlassCard = styled(motion.div)`
   z-index: 2;
   top: 20%;
   left: 5%;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     left: 50%;
-    margin-left: -150px;
-    top: 20%; /* Adjusted for new height */
+    width: min(300px, calc(100% - 2rem));
+    transform: translateX(-50%);
+    margin-left: 0;
+    top: 20%;
   }
 
   [data-theme='dark'] & {
@@ -211,6 +215,8 @@ const ProfileGlassCard = styled(motion.div)`
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   }
 `;
+
+
 
 const CardAvatar = styled.div`
   width: 100px;
@@ -1154,8 +1160,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
                 height: 400,
                 top: '50%',
                 left: '50%',
-                x: '-50%',
-                y: '-50%',
+                transform: 'translate(-50%, -50%)',
+
               }}
               animate={{
                 scale: isFlipped ? [1.1, 1.2, 1.1] : [1, 1.1, 1],
