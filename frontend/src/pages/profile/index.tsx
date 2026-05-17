@@ -950,6 +950,20 @@ const Profile: React.FC = () => {
     }
   }, []);
 
+  const handleDeleteMusic = useCallback(async (musicId: number, title: string) => {
+    const confirmed = await adnaan.confirm.delete(`确定要删除“${title}”吗？`, '删除音乐');
+    if (!confirmed) return;
+
+    try {
+      await API.userMusic.deleteMusic(musicId);
+      adnaan.toast.success('删除成功');
+      setUserMusicList((prev) => prev.filter((item) => item.id !== musicId));
+    } catch (error: any) {
+      adnaan.toast.error(error.message || '删除失败');
+    }
+  }, []);
+
+
   const loadDashboard = useCallback(async () => {
     setIsUserLoading(true);
     try {
@@ -1360,6 +1374,15 @@ const Profile: React.FC = () => {
                       </MusicInfo>
                       <Button variant="ghost" size="small" style={{ borderRadius: '50%', width: 28, height: 28, padding: 0, flexShrink: 0 }}>
                         <FiPlay size={12} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        style={{ borderRadius: '50%', width: 28, height: 28, padding: 0, flexShrink: 0, color: 'var(--error-color)' }}
+                        onClick={() => handleDeleteMusic(music.id, music.title)}
+                        title="删除音乐"
+                      >
+                        <FiTrash2 size={12} />
                       </Button>
                     </MusicItem>
                   ))
