@@ -35,6 +35,10 @@ export interface AppIconConfig {
 // 应用图标配置（优先使用本地图标，降级到 CDN）
 const APP_ICON_CONFIGS: Record<string, Omit<AppIconConfig, 'name'>> = {
   // 开发工具
+  Adnify: {
+    icon: LOCAL_ICONS.adnify,
+    color: '#7C3AED',
+  },
   Cursor: {
     icon: LOCAL_ICONS.cursor,
     color: '#007ACC',

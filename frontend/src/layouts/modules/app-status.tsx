@@ -23,6 +23,7 @@ import { getAppIcon, getAppColor } from '@/utils/ui/icons';
 
 // 备用图标
 const FALLBACK_ICONS: Record<string, React.ReactNode> = {
+  Adnify: <FiCode />,
   Cursor: <FiCode />,
   Windsurf: <FiCode />,
   'VS Code': <FiCode />,
@@ -48,6 +49,7 @@ const FALLBACK_ICONS: Record<string, React.ReactNode> = {
   深夜时光: <FiStar />,
   default: <FiMonitor />,
 };
+
 
 // 波形动画
 const wave = keyframes`
