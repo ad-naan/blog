@@ -13,12 +13,16 @@ import {
   FiTerminal,
   FiHash,
   FiArrowDown,
+  FiEye,
+  FiFileText,
+  FiFolder,
 } from 'react-icons/fi';
 import { useAnimationEngine, useSpringInteractions } from '@/utils/ui/animation';
 import { LazyImage } from '@/components/common';
 import { Icon } from '@/components/common/icon';
 import { WaveText } from '@/components/common';
 import { SiteSettings } from '@/types';
+import { API } from '@/utils/api';
 
 // ==================== Styled Components ====================
 
@@ -49,7 +53,8 @@ const HeroContainer = styled(motion.div)`
     gap: 1rem;
     height: auto;
     min-height: calc(100vh - var(--header-height));
-    justify-content: center;
+    justify-content: flex-start;
+    padding-top: 2rem;
   }
 `;
 
@@ -65,221 +70,165 @@ const HeroContent = styled(motion.div)`
   }
 `;
 
-// --- New Right Side Visuals: Layered Card Stack ---
+// --- New Right Side Visuals: Profile Card ---
 
 const CardStackContainer = styled(motion.div)`
   position: relative;
-  width: min(420px, 100%);
+  width: min(520px, 100%);
   max-width: 100%;
-  height: 520px;
   perspective: 1000px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
 
   @media (max-width: 968px) {
     width: 100%;
-    max-width: 420px;
-    height: 400px;
+    max-width: 440px;
+    height: auto;
     order: 1;
     margin: 0 auto 2rem;
     transform: none;
   }
 
   @media (max-width: 768px) {
-    height: 340px;
+    height: auto;
     margin-top: 0.5rem;
   }
 `;
 
-const CodeWindow = styled(motion.div)`
-  position: absolute;
-  width: min(340px, calc(100% - 1.5rem));
-  height: 220px;
-  background: #1e1e1e;
-  border-radius: 12px;
-  top: 0;
-  right: 0;
-  box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-  padding: 1.5rem;
-  font-family: 'Fira Code', monospace;
-  overflow: hidden;
-  z-index: 1;
-  transform-origin: center center;
-  box-sizing: border-box;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #ff5f56;
-    box-shadow:
-      20px 0 0 #ffbd2e,
-      40px 0 0 #27c93f;
-  }
-
-  @media (max-width: 768px) {
-    left: 50%;
-    right: auto;
-    width: min(340px, calc(100% - 1.5rem));
-    transform: translateX(-50%);
-    margin-left: 0;
-    top: 0;
-  }
-
-  [data-theme='light'] & {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const CodeContent = styled.div`
-  margin-top: 1.5rem;
-  font-size: 0.75rem;
-  line-height: 1.6;
-  color: #a9b7c6;
-
-  [data-theme='light'] & {
-    color: #5c6c7f;
-  }
-
-  .k {
-    color: #cc7832;
-  }
-  .s {
-    color: #6a8759;
-  }
-  .f {
-    color: #ffc66d;
-  }
-  .c {
-    color: #808080;
-  }
-
-  [data-theme='light'] & {
-    .k {
-      color: #d73a49;
-    }
-    .s {
-      color: #032f62;
-    }
-    .f {
-      color: #6f42c1;
-    }
-    .c {
-      color: #6a737d;
-    }
-  }
-`;
-
 const ProfileGlassCard = styled(motion.div)`
-  position: absolute;
-  width: min(300px, calc(100% - 2rem));
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 24px;
+  width: min(520px, 100%);
+  background: var(--bg-primary, #ffffff);
+  border-radius: 28px;
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(255, 255, 255, 0.4),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+    0 24px 50px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
   z-index: 2;
-  top: 20%;
-  left: 5%;
   box-sizing: border-box;
 
-  @media (max-width: 768px) {
-    left: 50%;
-    width: min(300px, calc(100% - 2rem));
-    transform: translateX(-50%);
-    margin-left: 0;
-    top: 20%;
+  @media (max-width: 968px) {
+    margin: 0 auto;
+    width: min(440px, 100%);
+    padding: 1.5rem;
   }
 
   [data-theme='dark'] & {
-    background: rgba(30, 30, 35, 0.7);
+    background: rgba(30, 30, 35, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.3);
   }
 `;
 
+const CardHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.8rem;
+`;
 
+const OnlineStatus = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 0.2rem;
 
-const CardAvatar = styled.div`
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  margin-bottom: 1.5rem;
-  position: relative;
-  padding: 4px;
-  background: var(--bg-primary);
-  box-shadow: 0 10px 25px rgba(var(--accent-rgb), 0.2);
-
-  img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  /* Status Dot */
-  &::after {
+  &::before {
     content: '';
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    width: 16px;
-    height: 16px;
+    width: 6px;
+    height: 6px;
     background: #27c93f;
-    border: 3px solid var(--bg-primary);
     border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(39, 201, 63, 0.2);
   }
 `;
 
-const InfoGrid = styled.div`
+const CardTitle = styled.h2`
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.2;
+`;
+
+const CardSubtitle = styled.p`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+`;
+
+const Divider = styled.div`
+  width: 100%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.05);
+
+  [data-theme='dark'] & {
+    background: rgba(255, 255, 255, 0.05);
+  }
+`;
+
+const CardBodyGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 190px;
+  gap: 1.5rem;
+  position: relative;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+`;
+
+const LeftInfoCol = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
-  width: 100%;
-  margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    order: 2;
+    width: 100%;
+  }
 `;
 
-const InfoRow = styled.div`
+const RightAvatarCol = styled.div`
+  position: relative;
   display: flex;
-  gap: 0.8rem;
-  width: 100%;
+  justify-content: flex-end;
+  align-items: flex-start;
+  z-index: 5;
+  padding-top: 0.5rem;
+
+  @media (max-width: 768px) {
+    order: 1;
+    align-items: center;
+    justify-content: center;
+    padding-top: 0;
+    margin-bottom: 0.8rem;
+    width: 100%;
+  }
 `;
 
-const InfoItem = styled.div`
+const InfoItemRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
-  background: rgba(var(--accent-rgb), 0.05);
-  border-radius: 12px;
-  font-size: 0.75rem;
+  gap: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
   font-weight: 500;
-  flex: 1;
-  justify-content: center;
 
   svg {
-    color: var(--accent-color);
-    width: 14px;
-    height: 14px;
+    color: #3b82f6;
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
   }
 
@@ -290,38 +239,204 @@ const InfoItem = styled.div`
   }
 `;
 
-const SkillPillsContainer = styled.div`
+const NewCardAvatar = styled.div`
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  width: 100%;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
   justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.15);
 
+  @media (max-width: 768px) {
+    width: 150px;
+    height: 150px;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
   [data-theme='dark'] & {
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(2, 132, 199, 0.2) 100%);
   }
 `;
 
-const SkillPill = styled.span`
-  font-size: 0.7rem;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-weight: 500;
-  border: 1px solid var(--border-color);
+const CodeBadge = styled.div`
+  position: absolute;
+  top: 10px;
+  right: -10px;
+  background: #3b82f6;
+  color: white;
+  width: 32px;
+  height: 32px;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+  z-index: 6;
+  clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+  font-family: var(--font-code);
+
+  @media (max-width: 768px) {
+    top: 8px;
+    right: 50px;
+    width: 30px;
+    height: 30px;
+    font-size: 0.65rem;
+  }
+`;
+
+const TechStackTitle = styled.div`
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+`;
+
+const NewSkillPillsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const NewSkillPill = styled.span`
+  font-size: 0.75rem;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--bg-secondary, #f8fafc);
+  color: var(--text-secondary);
+  font-weight: 600;
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(var(--accent-rgb), 0.05);
-    color: var(--accent-color);
-    border-color: var(--accent-color);
-    transform: translateY(-1px);
+    background: #e0f2fe;
+    color: #0284c7;
+  }
+  
+  [data-theme='dark'] & {
+    background: rgba(255, 255, 255, 0.05);
+    &:hover {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+    }
+  }
+`;
+
+const CardQuote = styled.div`
+  background: var(--bg-primary, #ffffff);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  position: absolute;
+  top: 212px;
+  right: -20px;
+  left: auto;
+  bottom: auto;
+  width: 220px;
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.10),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  z-index: 6;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+  
+  p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    font-weight: 700;
+    margin: 0;
+  }
+  
+  .quote-icon {
+    color: #3b82f6;
+    margin-bottom: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    opacity: 0.8;
+  }
+  
+  .wave-icon {
+    color: #3b82f6;
+    margin-top: 6px;
+    display: block;
+    text-align: right;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+  
+  [data-theme='dark'] & {
+    background: rgba(30, 30, 35, 1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+const StatsFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2.5rem;
+  padding: 1.2rem 2rem;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 16px;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+
+  [data-theme='dark'] & {
+    background: rgba(255, 255, 255, 0.03);
+  }
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+  
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    
+    svg {
+      color: #3b82f6;
+      width: 14px;
+      height: 14px;
+      opacity: 0.8;
+    }
+  }
+  
+  .value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+`;
+
+const StatDivider = styled.div`
+  width: 1px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.08);
+
+  [data-theme='dark'] & {
+    background: rgba(255, 255, 255, 0.08);
   }
 `;
 
@@ -337,14 +452,15 @@ const DecorCircle = styled(motion.div)`
 // --------------------------------------
 
 const Title = styled(motion.h1)`
-  font-size: 2.4rem;
+  font-size: 2.5rem;
   font-weight: 800;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   letter-spacing: -0.5px;
-  line-height: 1.1;
+  line-height: 1.15;
 
   &:after {
     content: '';
@@ -408,8 +524,8 @@ const Title = styled(motion.h1)`
 const Subtitle = styled(motion.h2)`
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1.2rem;
-  line-height: 1.3;
+  margin-bottom: 0.8rem;
+  line-height: 1.5;
   position: relative;
 
   code {
@@ -428,7 +544,7 @@ const Subtitle = styled(motion.h2)`
 `;
 
 const Description = styled(motion.p)`
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 1.5rem;
@@ -734,7 +850,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    const checkMobile = () => setIsMobile(window.innerWidth <= 968);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -742,86 +858,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
 
   // --- Animation Variants for Shuffle Effect ---
   // Defined inside component to access isMobile
-  const frontCardVariants: Variants = {
-    normal: {
-      scale: 1,
-      opacity: 1,
-      filter: 'blur(0px)',
-      zIndex: 2,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: 'circOut',
-      },
-    },
-    flipped: {
-      scale: isMobile ? 0.9 : 0.85,
-      opacity: 0.4,
-      filter: 'blur(3px)',
-      zIndex: 1,
-      y: isMobile ? -76 : -30, // Move up more on mobile to swap with window
-      transition: { duration: 0.5, ease: 'easeInOut' },
-    },
-  };
 
-  const backWindowVariants: Variants = {
-    normal: {
-      scale: isMobile ? 1.08 : 0.92,
-      opacity: 0.8,
-      filter: 'blur(0.5px)',
-      zIndex: 1,
-      y: 0,
-      x: 0,
-      transition: { duration: 0.5, ease: 'easeInOut' },
-    },
-    flipped: {
-      scale: 1.1,
-      opacity: 1,
-      filter: 'blur(0px)',
-      zIndex: 2,
-      y: isMobile ? 76 : 20, // Move down more on mobile to swap with card
-      x: isMobile ? 0 : -20, // No horizontal shift on mobile
-      transition: {
-        duration: 0.5,
-        ease: 'circOut',
-      },
-    },
-  };
 
-  // 3D Tilt Effect Logic
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const mouseX = useSpring(x, { stiffness: 150, damping: 15 });
-  const mouseY = useSpring(y, { stiffness: 150, damping: 15 });
-
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], [10, -10]); // Slightly more tilt
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-10, 10]);
-
-  // Parallax for layers
-  const codeWindowX = useTransform(mouseX, [-0.5, 0.5], [-10, 10]);
-  const codeWindowY = useTransform(mouseY, [-0.5, 0.5], [10, -10]);
-
-  const cardX = useTransform(mouseX, [-0.5, 0.5], [15, -15]); // Moves opposite/more for depth
-  const cardY = useTransform(mouseY, [-0.5, 0.5], [-15, 15]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseXVal = e.clientX - rect.left;
-    const mouseYVal = e.clientY - rect.top;
-    const xPct = mouseXVal / width - 0.5;
-    const yPct = mouseYVal / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
+  // 3D Tilt Effect Logic removed for static card
 
   const socialInteractions = useSpringInteractions({
     hoverScale: 1.1,
@@ -837,12 +876,34 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
   const [showLine3, setShowLine3] = useState(false);
   const [showLine4, setShowLine4] = useState(false);
   const [showRest, setShowRest] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
 
-  const handleCardFlip = () => {
-    setIsFlipped(!isFlipped);
-  };
+  // 真实统计数据
+  const [articleCount, setArticleCount] = useState<number | null>(null);
+  const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [noteCount, setNoteCount] = useState<number | null>(null);
 
+  useEffect(() => {
+    API.article.getArticles({ page: 1, limit: 1 })
+      .then(res => {
+        const total = res?.meta?.pagination?.total;
+        if (total !== undefined) setArticleCount(total);
+      })
+      .catch(() => {});
+
+    API.project.getProjectStats()
+      .then(res => {
+        const total = res?.data?.total;
+        if (total !== undefined) setProjectCount(total);
+      })
+      .catch(() => {});
+
+    API.note.getNotes({ page: 1, limit: 1 })
+      .then(res => {
+        const total = res?.meta?.pagination?.total;
+        if (total !== undefined) setNoteCount(total);
+      })
+      .catch(() => {});
+  }, []);
   // Quote Logic
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [currentQuote, setCurrentQuote] = useState({
@@ -902,13 +963,36 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
     <Section>
       <HeroContainer>
         <HeroContent>
-          {/* 第1行 */}
+          {/* Category Tag */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              color: 'var(--accent-color)',
+              background: 'rgba(81, 131, 245, 0.08)',
+              border: '1px solid rgba(81, 131, 245, 0.12)',
+              padding: '3px 10px',
+              borderRadius: '20px',
+              letterSpacing: '0.5px',
+              width: 'fit-content',
+            }}
+          >
+            // 代码 · 设计 · 创意
+          </motion.div>
+
           <Title>
+            {/* Line 1: 欢迎踏入代码与创意交织的 */}
             <motion.span
               variants={variants.waveContainer}
               initial="hidden"
               animate={showLine1 ? 'visible' : 'hidden'}
-              style={{ display: 'inline-block' }}
+              style={{ display: 'block' }}
               onAnimationComplete={(definition: any) => {
                 if (definition === 'visible' && showLine1) {
                   setShowLine2(true);
@@ -919,26 +1003,34 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
                 <AnimatedChar key={index} variants={variants.waveChar}>
                   {char}
                 </AnimatedChar>
-              ))}{' '}
-              <span style={{ color: 'var(--accent-color)' }}>
-                {'奇幻宇宙'.split('').map((char, index) => (
-                  <AnimatedChar key={`highlight-${index}`} variants={variants.waveChar}>
-                    {char}
-                  </AnimatedChar>
-                ))}
-              </span>
+              ))}
             </motion.span>
+            {/* Line 2: 奇幻宇宙 + emoji */}
             <motion.span
-              className="wave"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={showLine1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0 }}
-              transition={{ delay: showLine1 ? 0.5 : 0, ...springPresets.snappy }}
+              initial={{ opacity: 0 }}
+              animate={showLine1 ? { opacity: 1 } : { opacity: 0 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
               style={{
-                display: 'inline-block',
-                fontSize: '0.8em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--accent-color)',
               }}
             >
-              🌌
+              {'奇幻宇宙'.split('').map((char, index) => (
+                <AnimatedChar key={`highlight-${index}`} variants={variants.waveChar}>
+                  {char}
+                </AnimatedChar>
+              ))}
+              <motion.span
+                className="wave"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={showLine1 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0 }}
+                transition={{ delay: 0.5, ...springPresets.snappy }}
+                style={{ display: 'inline-block', fontSize: '0.8em' }}
+              >
+                🌌
+              </motion.span>
             </motion.span>
           </Title>
 
@@ -1133,21 +1225,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
           </SocialLinks>
         </HeroContent>
 
-        {/* Right Column: Layered Card Stack */}
+        {/* Right Column: Static Profile Card */}
         <CardStackContainer
-          ref={containerRef}
-          onMouseMove={!isMobile ? handleMouseMove : undefined}
-          onMouseLeave={handleMouseLeave}
-          onClick={handleCardFlip}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: 'backOut', delay: 0.2 }}
         >
-          <motion.div
+          <div
             style={{
-              rotateX: isMobile ? 0 : rotateX,
-              rotateY: isMobile ? 0 : rotateY,
-              transformStyle: 'preserve-3d',
               width: '100%',
               height: '100%',
               position: 'relative',
@@ -1161,97 +1246,85 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-
               }}
-              animate={{
-                scale: isFlipped ? [1.1, 1.2, 1.1] : [1, 1.1, 1],
-                opacity: [0.4, 0.6, 0.4],
-                filter: isFlipped ? 'blur(50px) hue-rotate(90deg)' : 'blur(40px) hue-rotate(0deg)',
-              }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
             />
 
-            {/* Layer 1: Code Window (Background -> Foreground) */}
-            <CodeWindow
-              style={{ x: isMobile ? 0 : codeWindowX, y: isMobile ? 0 : codeWindowY }}
-              variants={backWindowVariants}
-              initial="normal"
-              animate={isFlipped ? 'flipped' : 'normal'}
-            >
-              <CodeContent>
-                <span className="k">const</span> <span className="f">Developer</span> = {'{'}
-                <br />
-                &nbsp;&nbsp;<span className="k">name</span>:{' '}
-                <span className="s">"{siteSettings?.authorName || 'Adnaan'}"</span>,
-                <br />
-                &nbsp;&nbsp;<span className="k">skills</span>: [<span className="s">"React"</span>,{' '}
-                <span className="s">"Node"</span>, <span className="s">"Design"</span>],
-                <br />
-                &nbsp;&nbsp;<span className="k">status</span>:{' '}
-                <span className="s">"{isFlipped ? 'Ready to Code' : 'Sleeping'}"</span>,
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={isFlipped ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
-                  style={{ overflow: 'hidden' }}
-                >
-                  &nbsp;&nbsp;<span className="c">// Click to toggle view</span>
-                  <br />
-                  &nbsp;&nbsp;<span className="f">contact</span>: () ={'>'} <span className="s">"Hire Me!"</span>,
-                  <br />
-                  &nbsp;&nbsp;<span className="k">location</span>:{' '}
-                  <span className="s">"{siteSettings?.location || 'Digital World'}"</span>
-                </motion.div>
-                <br />
-                {'}'};
-              </CodeContent>
-            </CodeWindow>
+            {/* Layer 2: Glass Profile Card */}
+            <ProfileGlassCard>
+              <CardBodyGrid>
+                <LeftInfoCol>
+                  <CardHeader>
+                    <OnlineStatus>在线</OnlineStatus>
+                    <CardTitle>{siteSettings?.authorName || 'adnaan'}</CardTitle>
+                    <CardSubtitle>{siteSettings?.authorTitle || '全栈开发者 · 创造者 · 学习者'}</CardSubtitle>
+                  </CardHeader>
 
-            {/* Layer 2: Glass Profile Card (Foreground -> Background) */}
-            <ProfileGlassCard
-              style={{ x: isMobile ? 0 : cardX, y: isMobile ? 0 : cardY }}
-              variants={frontCardVariants}
-              initial="normal"
-              animate={isFlipped ? 'flipped' : 'normal'}
-            >
-              <CardAvatar>
-                <LazyImage
-                  src={
-                    siteSettings?.avatar ||
-                    'https://foruda.gitee.com/avatar/1745582574310382271/5352827_adnaan_1745582574.png!avatar100'
-                  }
-                  alt={siteSettings?.authorName || '头像'}
-                />
-              </CardAvatar>
+                  <Divider style={{ marginTop: '0.5rem' }} />
 
-              <InfoGrid>
-                <InfoRow>
-                  {siteSettings?.location && (
-                    <InfoItem>
-                      <FiMapPin /> <span>{siteSettings.location}</span>
-                    </InfoItem>
-                  )}
-                  {siteSettings?.mbti && (
-                    <InfoItem>
-                      <FiActivity /> <span>{siteSettings.mbti}</span>
-                    </InfoItem>
-                  )}
-                </InfoRow>
-                {siteSettings?.occupation && (
-                  <InfoItem style={{ width: '100%' }}>
-                    <FiLayers /> <span>{siteSettings.occupation.split(' ')[0]}</span>
-                  </InfoItem>
-                )}
-              </InfoGrid>
+                  <InfoItemRow>
+                    <FiMapPin /> <span>{siteSettings?.location || '上海, 中国'}</span>
+                  </InfoItemRow>
+                  <InfoItemRow>
+                    <FiActivity /> <span>{siteSettings?.mbti || 'INFJ-T'}</span>
+                  </InfoItemRow>
+                  <InfoItemRow>
+                    <FiLayers /> <span>{siteSettings?.occupation?.split(' ')[0] || '全栈开发者'}</span>
+                  </InfoItemRow>
 
-              {siteSettings?.skills && siteSettings.skills.length > 0 && (
-                <SkillPillsContainer>
-                  {siteSettings.skills.slice(0, 6).map((skill, index) => (
-                    <SkillPill key={index}>{skill}</SkillPill>
-                  ))}
-                </SkillPillsContainer>
-              )}
+                  <Divider />
+
+                  <TechStackTitle>技术栈</TechStackTitle>
+                  <NewSkillPillsContainer>
+                    {(siteSettings?.skills?.length ? siteSettings.skills : ['Vue', 'React', 'Node.js', 'Python', 'Java', 'Electron']).slice(0, 6).map((skill, index) => (
+                      <NewSkillPill key={index}>{skill}</NewSkillPill>
+                    ))}
+                  </NewSkillPillsContainer>
+                </LeftInfoCol>
+
+                <RightAvatarCol>
+                  <NewCardAvatar>
+                    <img
+                      src={
+                        siteSettings?.avatar ||
+                        'https://foruda.gitee.com/avatar/1745582574310382271/5352827_adnaan_1745582574.png!avatar100'
+                      }
+                      alt={siteSettings?.authorName || 'Avatar'}
+                    />
+                  </NewCardAvatar>
+                  <CodeBadge>{'</>'}</CodeBadge>
+
+                  <CardQuote>
+                    <div className="quote-icon">“</div>
+                    <p>用代码构建想法<br />用设计传递温度</p>
+                    <div className="wave-icon">~</div>
+                  </CardQuote>
+                </RightAvatarCol>
+              </CardBodyGrid>
+
+              <StatsFooter>
+                <StatItem>
+                  <div className="label">
+                    <FiFileText /> 文章
+                  </div>
+                  <div className="value">{articleCount !== null ? `${articleCount}+` : '...'}</div>
+                </StatItem>
+                <StatDivider />
+                <StatItem>
+                  <div className="label">
+                    <FiFolder /> 项目
+                  </div>
+                  <div className="value">{projectCount !== null ? `${projectCount}+` : '...'}</div>
+                </StatItem>
+                <StatDivider />
+                <StatItem>
+                  <div className="label">
+                    <FiFileText /> 手记
+                  </div>
+                  <div className="value">{noteCount !== null ? `${noteCount}+` : '...'}</div>
+                </StatItem>
+              </StatsFooter>
             </ProfileGlassCard>
-          </motion.div>
+          </div>
         </CardStackContainer>
 
         {/* Quote Footer - Full Width, Bottom Aligned */}

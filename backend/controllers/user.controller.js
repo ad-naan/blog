@@ -133,8 +133,10 @@ exports.uploadAvatar = asyncHandler(async (req, res) => {
   };
 
   // 构建完整的头像URL
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const fullAvatarUrl = `${baseUrl}/${result.data.path}`;
+  // 优先使用环境变量 PUBLIC_BASE_URL（生产环境通过反代访问时必需）
+  // 回退到请求头推断（适合本地开发直连）
+  const baseUrl = (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+  const fullAvatarUrl = `${baseUrl}/${result.data.path.replace(/^\/+/, '')}`;
 
   return res.apiSuccess(
     {
