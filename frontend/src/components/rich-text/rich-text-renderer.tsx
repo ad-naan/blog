@@ -269,15 +269,13 @@ const SimpleCodeBlock: React.FC<SimpleCodeBlockProps> = React.memo(({ code, lang
       const performHighlight = async () => {
         if (canceled) return;
 
-        const hljs = (await import('highlight.js')).default;
+        // 轻量 highlighter：只注册常用语言（与编辑器一致），按需异步加载
+        const { highlightCode, escapeHtml } = await import('@/utils/editor/highlight');
         let html = '';
         try {
-          html =
-            language && hljs.getLanguage(language)
-              ? hljs.highlight(code, { language }).value
-              : hljs.highlightAuto(code).value;
+          html = highlightCode(code, language);
         } catch {
-          html = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          html = escapeHtml(code);
         }
         if (!canceled) {
           // 使用 requestAnimationFrame 确保 DOM 更新在下一帧
