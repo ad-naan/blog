@@ -239,6 +239,30 @@ class PromptManager {
 
 使用标准 Markdown 格式输出。`
     );
+
+    // 生成单个章节（流水线用）
+    this.templates.section = PromptTemplate.fromTemplate(
+      `${this.markdownSystemPrompt}
+
+【章节写作任务】
+文章标题: {title}
+文章关键词: {keywords}
+全文大纲:
+{outline}
+
+当前要写的章节:
+{section}
+
+写作要求：
+1. 只输出当前章节的内容，以本章节的标题开头（使用大纲中原级别的标题，如 ## 或 ###）
+2. 目标字数: 约 {sectionWordCount} 字
+3. 内容要具体、有信息量：给出实际例子、代码示例（如适用）、可操作的建议
+4. 不要泛泛而谈、不要空洞的总结句、不要重复其他章节的内容
+5. 风格: {style}
+6. 不要输出"下一章我们将..."之类的过渡语
+
+直接输出本章节的 Markdown 内容。`
+    );
   }
 
   /**

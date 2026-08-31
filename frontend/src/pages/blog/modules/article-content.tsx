@@ -17,12 +17,6 @@ const ArticleDetailContainer = styled(motion.div)`
   padding: 0 1rem;
 `;
 
-// 文章标题区
-const ArticleDetailHeader = styled.div`
-  margin-bottom: 2rem;
-  text-align: center;
-`;
-
 // 文章标题
 const ArticleDetailTitle = styled.h1`
   font-size: 2.25rem;
@@ -33,6 +27,12 @@ const ArticleDetailTitle = styled.h1`
   @media (max-width: 768px) {
     font-size: 1.75rem;
   }
+`;
+
+// 文章标题区
+const ArticleDetailHeader = styled.div`
+  margin-bottom: 2rem;
+  text-align: center;
 `;
 
 // 文章元信息
@@ -177,6 +177,8 @@ const ArticleContentWrapper = styled(RichTextContent)`
   /* 文章页面基础设置 */
   min-height: 300px;
   position: relative;
+  max-width: 760px; /* 舒适的阅读行宽（约 65-75 字符/行） */
+  margin: 0 auto;
 
   /* ========== 文章特定：H2 标题装饰线 ========== */
   h2.article-heading {
@@ -221,21 +223,25 @@ const ArticleTags = styled.div`
   margin-top: 2rem;
 `;
 
-// 标签项
+// 标签项 - 胶囊风格，与手记页 Tag 体系统一
 const ArticleTag = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 0.3rem 0.6rem;
-  background: rgba(81, 131, 245, 0.1);
+  padding: 0.35rem 0.9rem;
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   color: var(--accent-color);
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 500;
   transition: all 0.2s ease;
 
   &:hover {
     background: var(--accent-color);
+    border-color: var(--accent-color);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
   }
 `;
 
@@ -271,7 +277,7 @@ const ArticleContent: React.FC<ArticleContentProps> = memo(({ article, contentRe
       const tagName = typeof tag === 'string' ? tag : tag?.name || String(tag);
       const tagId = typeof tag === 'string' ? index : tag?.id || index;
 
-      return <ArticleTag key={tagId}>{tagName}</ArticleTag>;
+      return <ArticleTag key={tagId}>#{tagName}</ArticleTag>;
     });
   }, [article.tags]);
 
@@ -333,10 +339,8 @@ const ArticleContent: React.FC<ArticleContentProps> = memo(({ article, contentRe
       ? article.author?.fullName || article.author?.username
       : article.author || '匿名';
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toISOString().split('T')[0];
-  };
+  // 使用 formatDateUtil 避免时区偏移（toISOString 会把东八区晚间时间显示成前一天）
+  const formatDate = (dateStr?: string) => (dateStr ? formatDateUtil(dateStr, 'YYYY-MM-DD') : '');
 
   // 使用 useMemo 缓存阅读时间计算，避免频繁调用 extractText 导致图片重复加载
   const readTime = useMemo(() => RichTextParser.calculateReadingTime(article.content || ''), [article.content]);

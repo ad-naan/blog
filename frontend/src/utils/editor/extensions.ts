@@ -39,6 +39,7 @@ import sql from 'highlight.js/lib/languages/sql';
 import go from 'highlight.js/lib/languages/go';
 import rust from 'highlight.js/lib/languages/rust';
 import php from 'highlight.js/lib/languages/php';
+import plaintext from 'highlight.js/lib/languages/plaintext';
 
 // 创建 lowlight 实例，只注册常用语言
 const lowlight = createLowlight();
@@ -59,6 +60,10 @@ lowlight.register('sql', sql);
 lowlight.register('go', go);
 lowlight.register('rust', rust);
 lowlight.register('php', php);
+// 纯文本别名：AI 输出常见 ```text 块，未注册会导致 highlight 抛 "Unknown language" 崩溃编辑器
+lowlight.register('text', plaintext);
+lowlight.register('plaintext', plaintext);
+lowlight.register('plain', plaintext);
 
 // 全局缓存扩展实例，所有编辑器共享
 let cachedExtensions: any[] | null = null;

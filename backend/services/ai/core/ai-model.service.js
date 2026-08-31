@@ -82,7 +82,7 @@ class AIModelService {
         [providerConfig.configKey]: this.config.apiKey,
         modelName: this.config.model || providerConfig.defaultModel,
         temperature: this.config.temperature || 0.7,
-        maxTokens: this.config.maxTokens || 4096,
+        maxTokens: this.config.maxTokens || 8192,
         streamUsage: false, // 禁用 token 统计
         maxRetries: 2,
         timeout: 60000,
@@ -159,7 +159,7 @@ class AIModelService {
         this.modelName || this.config.model || this.providers[this.config.provider]?.defaultModel,
       available: this.isAvailable(),
       temperature: this.config.temperature || 0.7,
-      maxTokens: this.config.maxTokens || 4096,
+      maxTokens: this.config.maxTokens || 8192,
     };
   }
 

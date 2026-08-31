@@ -24,6 +24,7 @@ import sql from 'highlight.js/lib/languages/sql';
 import go from 'highlight.js/lib/languages/go';
 import rust from 'highlight.js/lib/languages/rust';
 import php from 'highlight.js/lib/languages/php';
+import plaintext from 'highlight.js/lib/languages/plaintext';
 
 // 与编辑器 extensions.ts 的 lowlight 注册表保持一致
 hljs.registerLanguage('javascript', javascript);
@@ -43,6 +44,10 @@ hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('go', go);
 hljs.registerLanguage('rust', rust);
 hljs.registerLanguage('php', php);
+// 纯文本别名：与编辑器端 extensions.ts 保持一致，避免 ```text 块高亮异常
+hljs.registerLanguage('text', plaintext);
+hljs.registerLanguage('plaintext', plaintext);
+hljs.registerLanguage('plain', plaintext);
 
 /**
  * 高亮代码，返回 HTML 字符串

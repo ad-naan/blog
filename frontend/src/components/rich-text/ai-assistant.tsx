@@ -769,18 +769,28 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ editor, editorRef }) =
 
   // 接受AI建议
   const handleAccept = useCallback(() => {
-    if (!editor || !streamContent || !selectedRange) return;
+    if (!editor || !streamContent) return;
 
     // 将Markdown转换为HTML
     const htmlContent = RichTextParser.streamMarkdownToHtml(streamContent);
 
-    // 使用保存的选区范围
-    editor
-      .chain()
-      .focus()
-      .deleteRange({ from: selectedRange.from, to: selectedRange.to })
-      .insertContent(htmlContent)
-      .run();
+    if (selectedRange) {
+      // 有选区：替换选区内容（范围可能因流式期间文档变化而失效，需防御）
+      try {
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: selectedRange.from, to: selectedRange.to })
+          .insertContent(htmlContent)
+          .run();
+      } catch {
+        // 范围失效时退化为插入到当前光标
+        editor.chain().focus().insertContent(htmlContent).run();
+      }
+    } else {
+      // 无选区（空文档生成 / 选区丢失）：插入到当前光标或文档末尾
+      editor.chain().focus().insertContent(htmlContent).run();
+    }
 
     adnaan.toast.success('已应用AI建议');
     setShowPreview(false);

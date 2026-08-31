@@ -110,7 +110,7 @@ class EnvironmentManager {
 
         // 模型参数
         temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.7,
-        maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 2000,
+        maxTokens: parseInt(process.env.AI_MAX_TOKENS) || 8192,
 
         // 请求配置
         timeout: parseInt(process.env.AI_TIMEOUT) || 30000, // 请求超时时间（毫秒）
