@@ -458,6 +458,10 @@ router.get('/upload-stats', authMiddleware.verifyToken, userController.getUpload
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+router.get('/me', authMiddleware.verifyToken, userController.getCurrentUser);
+
+router.get('/info', authMiddleware.verifyToken, userController.getCurrentUser);
+
 router.get('/:id', authMiddleware.verifyToken, userController.getUserById);
 
 /**
@@ -621,53 +625,5 @@ router.put('/:id', authMiddleware.verifyToken, userController.updateUser);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete('/:id', authMiddleware.verifyToken, userController.deleteUser);
-
-/**
- * @swagger
- * /api/users/me:
- *   get:
- *     summary: 获取当前用户信息
- *     tags: [用户]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 获取成功
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       401:
- *         description: 未授权
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get('/me', authMiddleware.verifyToken, userController.getCurrentUser);
-
-/**
- * @swagger
- * /api/user/info:
- *   get:
- *     summary: 获取当前用户信息 (兼容接口)
- *     tags: [用户]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 获取成功
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       401:
- *         description: 未授权
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get('/info', authMiddleware.verifyToken, userController.getCurrentUser);
 
 module.exports = router;
