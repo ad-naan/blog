@@ -63,6 +63,32 @@ const Divider = styled.div`
   margin: 0 4px;
 `;
 
+const FONT_OPTIONS = [
+  { label: '默认字体', value: '' },
+  { label: '思源黑体', value: "'Source Han Sans', 'Noto Sans SC', sans-serif" },
+  { label: '宋体', value: "'SimSun', 'Songti SC', serif" },
+  { label: '楷体', value: "'KaiTi', 'Kaiti SC', serif" },
+  { label: '等宽代码体', value: "'JetBrains Mono', 'Fira Code', Consolas, monospace" },
+];
+
+const FontSelect = styled.select`
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  max-width: 110px;
+  outline: none;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: var(--accent-color);
+  }
+`;
+
 interface ToolbarButtonProps {
   active?: boolean;
   disabled?: boolean;
@@ -132,6 +158,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   const [showHeadingMenu, setShowHeadingMenu] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const [fontFamily, setFontFamily] = useState('');
   // 强制更新状态，用于响应编辑器选区变化
   const [, forceUpdate] = useState(0);
 
@@ -141,6 +168,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
     const updateToolbar = () => {
       forceUpdate((n) => n + 1);
+      // 同步当前光标处的字体（未设置时为空）
+      setFontFamily((editor.getAttributes('textStyle').fontFamily as string) || '');
     };
 
     // 监听选区变化和事务
@@ -244,6 +273,22 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           onToggle={() => setShowHighlightPicker(!showHighlightPicker)}
           onClose={() => setShowHighlightPicker(false)}
         />
+
+        <FontSelect
+          value={fontFamily}
+          title="字体"
+          onChange={(e) => {
+            const value = e.target.value;
+            editor.chain().focus().setFontFamily(value).run();
+            setFontFamily(value);
+          }}
+        >
+          {FONT_OPTIONS.map((opt) => (
+            <option key={opt.label} value={opt.value} style={{ fontFamily: opt.value || undefined }}>
+              {opt.label}
+            </option>
+          ))}
+        </FontSelect>
       </ToolbarGroup>
 
       <Divider />

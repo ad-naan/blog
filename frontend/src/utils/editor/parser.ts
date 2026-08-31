@@ -46,6 +46,8 @@ export class RichTextParser {
     'sup', // 上标
     'label', // 任务列表用
     'input', // 任务列表复选框
+    'colgroup', // 表格列宽
+    'col', // 表格列宽
   ];
 
   // 系统支持的CSS类名白名单
@@ -58,8 +60,75 @@ export class RichTextParser {
     'rich-text-image',
     'rich-text-table-wrapper',
     'rich-text-table',
+    'editor-table', // 编辑器输出的表格类名（与 rich-text-table 共存）
+    'editor-image', // 编辑器输出的图片类名
     'rich-text-cursor', // 允许打字机光标
   ];
+
+  // 各标签允许的属性白名单（DOMParser 与正则两条清洗路径共用）
+  private static readonly ALLOWED_ATTRIBUTES: Record<string, string[]> = {
+    div: ['class', 'data-language'],
+    p: ['class', 'style'], // 段落支持样式
+    span: ['class', 'style'], // span 支持样式（文字颜色/字体等）
+    h1: ['class', 'style', 'id'],
+    h2: ['class', 'style', 'id'],
+    h3: ['class', 'style', 'id'],
+    h4: ['class', 'style', 'id'],
+    h5: ['class', 'style', 'id'],
+    h6: ['class', 'style', 'id'],
+    a: ['href', 'target', 'rel', 'class'],
+    img: ['src', 'alt', 'loading', 'class', 'width', 'height', 'style', 'data-align'],
+    code: ['class'],
+    pre: ['class', 'data-language'],
+    blockquote: ['class'],
+    table: ['class', 'style'],
+    th: ['colspan', 'rowspan', 'class', 'style', 'colwidth', 'data-colwidth'],
+    td: ['colspan', 'rowspan', 'class', 'style', 'colwidth', 'data-colwidth'],
+    colgroup: ['class'],
+    col: ['class', 'style', 'width', 'span'],
+    mark: ['class', 'style', 'data-color'], // 高亮支持样式和颜色标记
+    ul: ['class', 'data-type'], // 任务列表需要 data-type
+    li: ['class', 'data-type', 'data-checked'], // 任务项需要 data-type 和 data-checked
+    input: ['type', 'checked', 'disabled'], // 任务列表复选框
+    label: ['class'],
+  };
+
+  // 任意标签下都视为安全的"有值属性"（布尔属性 checked/disabled 单独处理）
+  private static readonly SAFE_VALUE_ATTRS = [
+    'target',
+    'rel',
+    'alt',
+    'loading',
+    'data-language',
+    'colspan',
+    'rowspan',
+    'width',
+    'height',
+    'data-align',
+    'data-color',
+    'data-type',
+    'data-checked',
+    'data-colwidth',
+    'colwidth',
+    'span',
+    'type',
+    'id',
+  ];
+
+  // 危险标签：整个删除，不保留子内容
+  private static readonly FORBIDDEN_TAGS = new Set([
+    'script',
+    'style',
+    'link',
+    'meta',
+    'base',
+    'iframe',
+    'frame',
+    'object',
+    'embed',
+    'noscript',
+    'form',
+  ]);
 
   /**
    * 从缓存获取结果
@@ -84,7 +153,9 @@ export class RichTextParser {
     // 如果缓存已满，删除最旧的条目
     if (this.cache.size >= this.CACHE_MAX_SIZE) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
 
     this.cache.set(key, {
@@ -126,23 +197,54 @@ export class RichTextParser {
   private static cleanStyleAttribute(style: string): string {
     if (!style) return '';
 
-    // 安全的 CSS 属性白名单
+    // 安全的 CSS 属性白名单（覆盖编辑器可产出的全部排版能力）
     const allowedStyles = [
       'color',
       'background-color',
+      'background',
       'font-size',
+      'font-family',
       'font-weight',
       'font-style',
+      'line-height',
+      'letter-spacing',
       'text-decoration',
+      'text-decoration-line',
       'text-align',
+      'text-indent',
       'width',
       'height',
+      'min-width',
+      'min-height',
       'max-width',
       'max-height',
       'margin',
+      'margin-left',
+      'margin-right',
+      'margin-top',
+      'margin-bottom',
       'padding',
+      'padding-left',
+      'padding-right',
+      'padding-top',
+      'padding-bottom',
       'display',
       'float',
+      'border',
+      'border-left',
+      'border-right',
+      'border-top',
+      'border-bottom',
+      'border-radius',
+      'border-color',
+      'border-width',
+      'border-style',
+      'box-shadow',
+      'opacity',
+      'vertical-align',
+      'white-space',
+      'word-break',
+      'overflow-wrap',
     ];
 
     // 解析 style 字符串
@@ -172,37 +274,12 @@ export class RichTextParser {
   }
 
   /**
-   * 清理HTML属性，只保留安全的属性
+   * 清理HTML属性，只保留安全的属性（正则路径使用；DOMParser 路径见 cleanElementAttributes）
    */
   private static cleanAttributes(attributes: string, tagName: string): string {
     if (!attributes) return '';
 
-    const allowedAttributes: Record<string, string[]> = {
-      div: ['class', 'data-language'],
-      p: ['class', 'style'], // 段落支持样式
-      span: ['class', 'style'], // span 支持样式（文字颜色等）
-      h1: ['class', 'style', 'id'],
-      h2: ['class', 'style', 'id'],
-      h3: ['class', 'style', 'id'],
-      h4: ['class', 'style', 'id'],
-      h5: ['class', 'style', 'id'],
-      h6: ['class', 'style', 'id'],
-      a: ['href', 'target', 'rel', 'class'],
-      img: ['src', 'alt', 'loading', 'class', 'width', 'height', 'style', 'data-align'],
-      code: ['class'],
-      pre: ['class', 'data-language'],
-      blockquote: ['class'],
-      table: ['class'],
-      th: ['colspan', 'rowspan', 'class'],
-      td: ['colspan', 'rowspan', 'class'],
-      mark: ['class', 'style', 'data-color'], // 高亮支持样式和颜色标记
-      ul: ['class', 'data-type'], // 任务列表需要 data-type
-      li: ['class', 'data-type', 'data-checked'], // 任务项需要 data-type 和 data-checked
-      input: ['type', 'checked', 'disabled'], // 任务列表复选框
-      label: ['class'],
-    };
-
-    const allowed = allowedAttributes[tagName] || ['class'];
+    const allowed = this.ALLOWED_ATTRIBUTES[tagName] || ['class'];
 
     // 匹配两种格式：attr="value" 和 attr (布尔属性)
     const attrWithValueRegex = /([\w-]+)=["']([^"']*)["']/g;
@@ -237,25 +314,7 @@ export class RichTextParser {
           cleanAttrs.push(`${attrName}="${attrValue}"`);
         } else if (attrName === 'src' && this.isValidUrl(attrValue)) {
           cleanAttrs.push(`${attrName}="${attrValue}"`);
-        } else if (
-          [
-            'target',
-            'rel',
-            'alt',
-            'loading',
-            'data-language',
-            'colspan',
-            'rowspan',
-            'width',
-            'height',
-            'data-align',
-            'data-color',
-            'data-type',
-            'data-checked',
-            'type',
-            'id',
-          ].includes(attrName)
-        ) {
+        } else if (this.SAFE_VALUE_ATTRS.includes(attrName)) {
           cleanAttrs.push(`${attrName}="${attrValue}"`);
         }
       }
@@ -276,6 +335,99 @@ export class RichTextParser {
   }
 
   /**
+   * 清理单个 DOM 元素的属性（DOMParser 路径）
+   * 返回 true 表示该元素需要移除（如非法 img/a）
+   */
+  private static cleanElementAttributes(el: Element): boolean {
+    const tagName = el.tagName.toLowerCase();
+    const allowed = this.ALLOWED_ATTRIBUTES[tagName] || ['class'];
+
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value;
+
+      if (!allowed.includes(name)) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+
+      if (name === 'class') {
+        const cleanClasses = value
+          .split(/\s+/)
+          .filter((cls) => this.ALLOWED_CLASSES.includes(cls) || cls.startsWith('language-'))
+          .join(' ');
+        if (cleanClasses) {
+          el.setAttribute('class', cleanClasses);
+        } else {
+          el.removeAttribute('class');
+        }
+      } else if (name === 'style') {
+        const cleanStyle = this.cleanStyleAttribute(value);
+        if (cleanStyle) {
+          el.setAttribute('style', cleanStyle);
+        } else {
+          el.removeAttribute('style');
+        }
+      } else if (name === 'href' || name === 'src') {
+        if (!this.isValidUrl(value)) {
+          if (name === 'src' && tagName === 'img') return true; // 移除非法图片
+          if (name === 'href' && tagName === 'a') return true; // 移除非法链接
+          el.removeAttribute(attr.name);
+        }
+      }
+      // 其余白名单属性（colspan、data-* 等）原样保留
+    }
+
+    return false;
+  }
+
+  /**
+   * 使用 DOMParser 进行白名单清洗（浏览器环境优先路径）
+   * 相比正则方案：能正确处理嵌套、转义、属性边界，且完整保留内联样式
+   */
+  private static cleanHtmlWithDom(html: string): string {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    // 1. 递归遍历，移除危险标签（连内容一起删）与非法元素
+    const walk = (node: Node) => {
+      const children = Array.from(node.childNodes);
+      for (const child of children) {
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const el = child as Element;
+          const tag = el.tagName.toLowerCase();
+
+          if (this.FORBIDDEN_TAGS.has(tag)) {
+            el.remove();
+            continue;
+          }
+
+          // 白名单外标签：保留其子内容（unwrap）
+          if (!this.ALLOWED_TAGS.includes(tag)) {
+            const fragment = doc.createDocumentFragment();
+            while (el.firstChild) fragment.appendChild(el.firstChild);
+            el.replaceWith(fragment);
+            // unwrap 后子节点仍需继续清洗，从 fragment 的父级重新遍历
+            walk(node);
+            continue;
+          }
+
+          const shouldRemove = this.cleanElementAttributes(el);
+          if (shouldRemove) {
+            el.remove();
+            continue;
+          }
+        }
+
+        walk(child);
+      }
+    };
+
+    walk(doc.body);
+
+    return doc.body.innerHTML;
+  }
+
+  /**
    * 验证并清理HTML标签
    */
   static validateAndCleanHtml(html: string): string {
@@ -283,20 +435,28 @@ export class RichTextParser {
       return '';
     }
 
-    let cleanHtml = html;
+    let cleanHtml: string;
 
-    // 移除不支持的标签，保留内容
-    const tagRegex = /<(\/?)([\w-]+)([^>]*)>/gi;
-    cleanHtml = cleanHtml.replace(tagRegex, (match, closing, tagName, attributes) => {
-      const tag = tagName.toLowerCase();
+    // 浏览器环境优先 DOMParser：正确处理嵌套/转义/属性边界，不误伤合法样式
+    if (typeof DOMParser !== 'undefined') {
+      cleanHtml = this.cleanHtmlWithDom(html);
+    } else {
+      // SSR/测试环境兜底：沿用正则清洗
+      cleanHtml = html.replace(/<(\/?)([\w-]+)([^>]*)>/gi, (match, closing, tagName, attributes) => {
+        const tag = tagName.toLowerCase();
 
-      if (this.ALLOWED_TAGS.includes(tag)) {
-        const cleanAttributes = this.cleanAttributes(attributes, tag);
-        return `<${closing}${tag}${cleanAttributes}>`;
-      }
+        if (this.FORBIDDEN_TAGS.has(tag)) {
+          return '';
+        }
 
-      return '';
-    });
+        if (this.ALLOWED_TAGS.includes(tag)) {
+          const cleanAttributes = this.cleanAttributes(attributes, tag);
+          return `<${closing}${tag}${cleanAttributes}>`;
+        }
+
+        return '';
+      });
+    }
 
     // 清理空标签（包括只包含空白的标签）
     cleanHtml = this.removeEmptyTags(cleanHtml);

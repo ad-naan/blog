@@ -17,7 +17,7 @@ import {
 
 interface TableFloatingMenuProps {
   editor: Editor;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const TableFloatingMenu: React.FC<TableFloatingMenuProps> = ({

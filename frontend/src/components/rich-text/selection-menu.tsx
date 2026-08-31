@@ -16,7 +16,7 @@ import {
 
 interface SelectionMenuProps {
   editor: Editor;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onLinkClick: () => void;
 }
 

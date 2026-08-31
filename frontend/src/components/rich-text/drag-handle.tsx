@@ -21,7 +21,7 @@ import {
 
 interface DragHandleProps {
   editor: Editor;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 interface MenuState {

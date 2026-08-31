@@ -39,7 +39,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, maxH
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMountedRef = useRef(true);
-  const isUpdatingRef = useRef(false);
+  // 记录最近一次由本编辑器 onUpdate 抛出的 HTML，用于区分"外部注入内容"与"自身回显"
+  const lastEmittedHtmlRef = useRef<string | null>(null);
 
   // 扩展
   const extensions = useMemo(() => createExtensions(), []);
@@ -156,13 +157,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, maxH
       },
     },
     onUpdate: ({ editor }) => {
-      isUpdatingRef.current = true;
       const html = editor.getHTML();
-
-      queueMicrotask(() => {
-        onChange(html);
-        isUpdatingRef.current = false;
-      });
+      lastEmittedHtmlRef.current = html;
+      onChange(html);
 
       // 更新斜杠菜单搜索
       if (slashMenuOpen && slashTriggerPosRef.current !== null) {
@@ -191,18 +188,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, maxH
     };
   }, []);
 
-  // 同步外部内容
+  // 同步外部内容（非受控模式）：
+  // 仅当传入内容既不是本编辑器最近抛出的回显、也与当前文档一致时才注入，
+  // 典型场景是异步加载草稿/文章。这样彻底切断"onChange -> state -> setContent"反馈环，
+  // 打字过程中编辑器永远不会被整体重设（光标跳动/输入卡顿的根因）。
   useEffect(() => {
-    if (editor && content && content !== editor.getHTML() && !isUpdatingRef.current) {
-      const trimmedContent = content.trim();
-      if (trimmedContent && trimmedContent !== '<p></p>') {
-        queueMicrotask(() => {
-          if (editor && !editor.isDestroyed) {
-            editor.commands.setContent(trimmedContent, { emitUpdate: false });
-          }
-        });
-      }
-    }
+    if (!editor || editor.isDestroyed) return;
+
+    const incoming = content ?? '';
+    if (incoming === lastEmittedHtmlRef.current || incoming === editor.getHTML()) return;
+
+    const trimmed = incoming.trim();
+    if (!trimmed || trimmed === '<p></p>') return;
+
+    editor.commands.setContent(trimmed, { emitUpdate: false });
   }, [content, editor]);
 
   // 删除斜杠命令文本

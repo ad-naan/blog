@@ -11,7 +11,7 @@ import Underline from '@tiptap/extension-underline';
 import Strike from '@tiptap/extension-strike';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { createLowlight } from 'lowlight';
-import { TextStyle, Color } from '@tiptap/extension-text-style';
+import { TextStyle, Color, FontFamily } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
@@ -124,15 +124,16 @@ export const createExtensions = () => {
         rel: 'noopener noreferrer',
       },
     }),
-    // 文字样式扩展(TextStyle 必须在 Color 之前)
+    // 文字样式扩展(TextStyle 必须在 Color/FontFamily 之前)
     TextStyle,
     Color,
+    FontFamily,
     Highlight.configure({
       multicolor: true,
     }),
-    // 表格 - 禁用列宽调整避免布局问题
+    // 表格 - 支持列宽拖拽调整（渲染端已放行 colgroup/col/data-colwidth）
     Table.configure({
-      resizable: false,
+      resizable: true,
       HTMLAttributes: {
         class: 'editor-table',
       },
