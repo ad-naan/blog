@@ -9,7 +9,10 @@ const FadeContainer = styled.div<{
   className?: string;
 }>`
   position: relative;
-  overflow-x: hidden;
+  /* clip 不会像 hidden 那样把另一轴计算为 auto，避免自身变成滚动容器，
+     否则滚动条会露出且 ::before/::after 遮罩会跟随内容滚动 */
+  overflow-x: clip;
+  overflow-y: clip;
 
   /* 顶部虚化遮罩 */
   &::before {

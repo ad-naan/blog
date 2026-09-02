@@ -12,15 +12,16 @@ const SidebarWrapper = styled(motion.div)`
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0; /* 允许 flex 子项收缩，使内部滚动区生效 */
   padding: 2rem 1rem 0;
 `;
 
 
 
 // 目录容器
-// 目录容器
 const TocContainer = styled.div`
-  max-height: calc(100vh - 280px);
+  flex: 1;
+  min-height: 0; /* flex 布局内允许收缩，让 overflow 生效 */
   overflow-y: auto;
   transition: all 0.3s ease;
   /* 隐藏滚动条，用上下虚化渐变提示可滚动 */
@@ -294,7 +295,10 @@ const ArticleToc: React.FC<ArticleTocProps> = memo(
       <>
         <SidebarWrapper initial="hidden" animate="visible" variants={variants.fadeIn}>
           {/* 顶部：目录列表 - 无标题，滚动条隐藏，用上下虚化渐变提示可滚动 */}
-          <FadeScrollContainer dependencies={[headings.length]}>
+          <FadeScrollContainer
+            dependencies={[headings.length]}
+            style={{ flex: '1', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          >
             <TocContainer>
               <TocList>{renderedHeadings}</TocList>
             </TocContainer>
