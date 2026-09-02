@@ -10,47 +10,31 @@ import { useClipboard } from '@/hooks';
 import adnaan from 'adnaan-ui';
 
 // 代码块容器
+// 代码块容器 - 扁平化：仅保留边框分隔，无阴影
 const CodeBlockContainer = styled.div`
   position: relative;
   margin: 1.5rem 0;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
 
-  /* 深色模式优化 */
-  [data-theme='dark'] & {
-    background: var(--bg-secondary);
-    border-color: var(--border-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  /* 悬停效果 */
   &:hover {
-    border-color: rgba(var(--accent-rgb), 0.3);
-    box-shadow: 0 4px 16px rgba(var(--accent-rgb), 0.1);
-
-    [data-theme='dark'] & {
-      box-shadow:
-        0 6px 20px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(var(--accent-rgb), 0.2);
-    }
+    border-color: var(--text-tertiary, var(--border-color));
   }
 `;
 
 // 代码块头部
+// 代码块头部 - 扁平化：纯色背景，无渐变/毛玻璃
 const CodeBlockHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
   padding-left: 4.5rem; /* 为圆点留出空间 */
-  background: linear-gradient(to bottom, var(--bg-primary), rgba(var(--accent-rgb), 0.02));
+  background: var(--bg-tertiary, var(--bg-primary));
   border-bottom: 1px solid var(--border-color);
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
   position: relative;
 
   /* Mac 风格圆点 */
@@ -74,17 +58,6 @@ const CodeBlockHeader = styled.div`
   &:hover::before {
     opacity: 1;
   }
-
-  /* 深色模式优化 */
-  [data-theme='dark'] & {
-    background: linear-gradient(to bottom, var(--bg-primary), rgba(var(--accent-rgb), 0.03));
-    border-bottom-color: var(--border-color);
-  }
-
-  /* 悬停时的视觉反馈 */
-  ${CodeBlockContainer}:hover & {
-    background: linear-gradient(to bottom, var(--bg-primary), rgba(var(--accent-rgb), 0.04));
-  }
 `;
 
 // 语言标签
@@ -102,6 +75,7 @@ const LanguageLabel = styled.span`
 `;
 
 // 复制按钮
+// 复制按钮 - 扁平化：无边框外阴影、无位移动画
 const CopyButton = styled.button<{ copied: boolean }>`
   display: flex;
   align-items: center;
@@ -114,27 +88,11 @@ const CopyButton = styled.button<{ copied: boolean }>`
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: ${(props) => (props.copied ? '0 2px 8px rgba(var(--accent-rgb), 0.3)' : 'none')};
-
-  svg {
-    transition: transform 0.2s ease;
-  }
+  transition: border-color 0.2s ease, color 0.2s ease;
 
   &:hover {
-    background: ${(props) => (props.copied ? 'var(--accent-color)' : 'var(--bg-tertiary)')};
+    color: var(--accent-color);
     border-color: var(--accent-color);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
-
-    svg {
-      transform: scale(1.1);
-    }
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.2);
   }
 `;
 

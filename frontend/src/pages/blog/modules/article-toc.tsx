@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHeart, FiBookmark, FiShare2, FiMessageSquare } from 'react-icons/fi';
 import { useAnimationEngine } from '@/utils/ui/animation';
+import { FadeScrollContainer } from '@/components/common/fade-scroll-container';
 import ShareModal from './share-modal';
 
 const SidebarWrapper = styled(motion.div)`
@@ -14,30 +15,19 @@ const SidebarWrapper = styled(motion.div)`
   padding: 2rem 1rem 0;
 `;
 
+
+
+// 目录容器
 // 目录容器
 const TocContainer = styled.div`
   max-height: calc(100vh - 280px);
   overflow-y: auto;
   transition: all 0.3s ease;
-  scrollbar-width: thin;
-  padding-right: 8px;
-  margin-bottom: 2rem;
+  /* 隐藏滚动条，用上下虚化渐变提示可滚动 */
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 4px;
-  }
-
-  &:hover::-webkit-scrollbar-thumb {
-    background-color: var(--text-tertiary);
+    display: none;
   }
 
   @media (max-width: 860px) {
@@ -303,10 +293,12 @@ const ArticleToc: React.FC<ArticleTocProps> = memo(
     return (
       <>
         <SidebarWrapper initial="hidden" animate="visible" variants={variants.fadeIn}>
-          {/* 顶部：目录列表 */}
-          <TocContainer>
-            <TocList>{renderedHeadings}</TocList>
-          </TocContainer>
+          {/* 顶部：目录列表 - 无标题，滚动条隐藏，用上下虚化渐变提示可滚动 */}
+          <FadeScrollContainer dependencies={[headings.length]}>
+            <TocContainer>
+              <TocList>{renderedHeadings}</TocList>
+            </TocContainer>
+          </FadeScrollContainer>
 
           {/* 分隔线 */}
           <Divider />

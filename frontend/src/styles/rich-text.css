@@ -83,14 +83,11 @@
   overflow: visible !important;
 }
 
-/* 深色模式 - 代码块优化 */
+/* 深色模式 - 代码块 */
 [data-theme='dark'] .rich-text-content pre,
 [data-theme='dark'] .ProseMirror pre {
   background: #1a1a1a;
   border-color: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme='dark'] .rich-text-content pre code,
@@ -116,12 +113,11 @@
   border: 1px solid var(--rich-text-border);
 }
 
-/* 深色模式 - 内联代码优化 */
+/* 深色模式 - 内联代码 */
 [data-theme='dark'] .rich-text-content code,
 [data-theme='dark'] .ProseMirror code {
-  background: rgba(129, 212, 250, 0.12); /* 使用主题色的半透明背景 */
-  color: #81d4fa; /* 明亮的蓝色 */
-  text-shadow: 0 0 8px rgba(129, 212, 250, 0.3); /* 微光效果 */
+  background: rgba(129, 212, 250, 0.12);
+  color: #81d4fa;
 }
 
 /* 语法高亮颜色 - 浅色模式（默认） */
@@ -249,15 +245,12 @@
   color: var(--rich-text-secondary);
 }
 
-/* 深色模式引用块优化 */
+/* 深色模式引用块 */
 [data-theme='dark'] .rich-text-content blockquote,
 [data-theme='dark'] .ProseMirror blockquote {
-  background: rgba(129, 212, 250, 0.08);
+  background: rgba(129, 212, 250, 0.06);
   border-left: 4px solid #81d4fa;
   color: #b0b0b0;
-  box-shadow:
-    inset 3px 0 8px rgba(129, 212, 250, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .rich-text-content blockquote p,
@@ -598,7 +591,7 @@
   letter-spacing: -0.02em;
 }
 
-/* 标题装饰线 (仅 H1, H2) */
+/* 标题装饰线 (仅 H1, H2) - 扁平化：纯色短横线 */
 .rich-text-content h1::after,
 .rich-text-content h2::after,
 .ProseMirror h1::after,
@@ -606,14 +599,14 @@
   content: '';
   display: block;
   width: 40px;
-  height: 4px;
-  background: linear-gradient(90deg, var(--accent-color), transparent);
+  height: 3px;
+  background: var(--accent-color);
   border-radius: 2px;
   margin-top: 0.5rem;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
-/* 深色模式标题增强 */
+/* 深色模式标题 */
 [data-theme='dark'] .rich-text-content h1,
 [data-theme='dark'] .rich-text-content h2,
 [data-theme='dark'] .rich-text-content h3,
@@ -627,7 +620,6 @@
 [data-theme='dark'] .ProseMirror h5,
 [data-theme='dark'] .ProseMirror h6 {
   color: #f0f0f0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .rich-text-content h1,
@@ -723,12 +715,12 @@
   color: #d4d4d4;
 }
 
-/* 分割线样式 - 渐变风格 */
+/* 分割线样式 - 扁平化：纯色细线 */
 .rich-text-content hr,
 .ProseMirror hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--rich-text-border), transparent);
+  background: var(--rich-text-border);
   margin: 3em 0;
   opacity: 0.6;
 }
@@ -741,21 +733,19 @@
   opacity: 0.7;
 }
 
-/* 高亮样式 */
+/* 高亮样式 - 扁平化：无下划线粗边 */
 .rich-text-content mark,
 .ProseMirror mark {
-  background: rgba(254, 240, 138, 0.6);
+  background: rgba(254, 240, 138, 0.5);
   color: inherit;
   padding: 0.1em 0.3em;
   border-radius: 4px;
-  border-bottom: 2px solid #facc15;
 }
 
 [data-theme='dark'] .rich-text-content mark,
 [data-theme='dark'] .ProseMirror mark {
-  background: rgba(234, 179, 8, 0.2);
+  background: rgba(234, 179, 8, 0.25);
   color: #fde047;
-  border-bottom-color: #ca8a04;
 }
 
 /* 滚动条样式 - 极简 & 自动隐藏 */
@@ -802,48 +792,30 @@
   vertical-align: middle;
 }
 
-/* 深色模式 - 内联代码优化 */
+/* 深色模式 - 内联代码 */
 [data-theme='dark'] .rich-text-content code,
 [data-theme='dark'] .ProseMirror code {
   background: rgba(var(--accent-rgb), 0.15);
   border-color: rgba(var(--accent-rgb), 0.25);
-  text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.3);
 }
 
-/* 引用块样式 - 卡片风格 + 水印 */
+/* 引用块样式 - 扁平化：左边线 + 纯色浅背景，无渐变/水印 */
 .rich-text-content blockquote,
 .ProseMirror blockquote {
   margin: 2rem 0;
   padding: 1.5rem 2rem;
   border: none;
-  border-left: 4px solid var(--accent-color);
-  background: linear-gradient(to right, rgba(var(--accent-rgb), 0.04), rgba(var(--accent-rgb), 0.01));
-  border-radius: 0 12px 12px 0;
+  border-left: 3px solid var(--accent-color);
+  background: var(--bg-secondary);
+  border-radius: 0 8px 8px 0;
   font-style: italic;
-  position: relative;
   color: var(--rich-text-secondary);
-  overflow: hidden;
 }
 
-/* 装饰性引号水印 */
-.rich-text-content blockquote::before,
-.ProseMirror blockquote::before {
-  content: '"';
-  position: absolute;
-  top: -15px;
-  right: 10px;
-  font-size: 80px;
-  line-height: 1;
-  font-family: serif;
-  color: var(--accent-color);
-  opacity: 0.1;
-  pointer-events: none;
-}
-
-/* 深色模式引用块优化 */
+/* 深色模式引用块 */
 [data-theme='dark'] .rich-text-content blockquote,
 [data-theme='dark'] .ProseMirror blockquote {
-  background: linear-gradient(to right, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.02));
+  background: rgba(255, 255, 255, 0.04);
   color: #b0b0b0;
 }
 
