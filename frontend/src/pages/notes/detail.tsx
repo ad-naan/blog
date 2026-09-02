@@ -301,15 +301,16 @@ const BackLink = styled(Link)`
 `;
 
 const Title = styled.h1`
-  font-size: 2.5rem;
+  font-family: var(--font-heading);
+  font-size: 2.25rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.35;
   margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
 
   @media (max-width: 768px) {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 `;
 
@@ -352,15 +353,6 @@ const ContentCard = styled.div`
       border-radius: 12px;
       box-shadow: var(--shadow-md);
       margin: 2rem 0;
-    }
-
-    blockquote {
-      border-left: 4px solid var(--accent-color);
-      background: var(--bg-secondary);
-      padding: 1rem 1.5rem;
-      border-radius: 0 8px 8px 0;
-      margin: 2rem 0;
-      font-style: italic;
     }
   }
 `;

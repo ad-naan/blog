@@ -19,11 +19,12 @@ const ArticleDetailContainer = styled(motion.div)`
 
 // 文章标题
 const ArticleDetailTitle = styled.h1`
-  font-family: 'LXGW WenKai Screen', var(--font-sans);
+  font-family: var(--font-heading);
   font-size: 2.25rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  line-height: 1.3;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
 
   @media (max-width: 768px) {
     font-size: 1.75rem;

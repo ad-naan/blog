@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Fira+Code&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css');
+/* 标题字体:思源宋体 - 真实 600/700 字重,与文楷正文形成"宋标楷文"的经典中文排版搭配 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&display=swap');
 @import './rich-text.css';
 @import './font.css';
 /**
@@ -12,6 +14,8 @@
     'Manrope', 'Manrope Fallback', system-ui, -apple-system, PingFang SC, 'Microsoft YaHei', Segoe UI, Roboto,
     Helvetica, 'noto sans sc', 'hiragino sans gb', 'sans-serif', 'Apple Color Emoji', 'Segoe UI Emoji',
     'Not Color Emoji';
+  /* 内容标题字体:思源宋体(真实多字重)在前,文楷兜底 */
+  --font-heading: 'Noto Serif SC', 'LXGW WenKai Screen', 'Songti SC', 'SimSun', serif;
   --font-code:
     'JetBrainsMono', 'Fira code Retina', 'Fira code', Consolas, Monaco, 'Hannotate SC', monospace, -apple-system;
 
