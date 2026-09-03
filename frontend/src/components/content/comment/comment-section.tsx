@@ -506,7 +506,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ targetId, targetType })
 
       await API.comment.createComment(commentData);
 
-      adnaan?.toast?.success(isLoggedIn ? '评论发布成功' : '评论发布成功，等待审核');
+      adnaan?.toast?.success('评论发布成功');
       setCommentText('');
       await fetchComments();
     } catch (error: any) {
@@ -560,7 +560,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ targetId, targetType })
 
       await API.comment.createComment(replyData);
 
-      adnaan?.toast?.success(isLoggedIn ? '回复发布成功' : '回复发布成功，等待审核');
+      adnaan?.toast?.success('回复发布成功');
       setReplyText('');
       setReplyingTo(null);
       await fetchComments();
@@ -779,7 +779,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ targetId, targetType })
                       fullWidth
                     />
                     <FormFooter onClick={(e) => e.stopPropagation()}>
-                      <FormInfo>{isLoggedIn ? 'Ctrl + Enter 快速发送' : '访客回复需要审核后才能显示'}</FormInfo>
+                      <FormInfo>Ctrl + Enter 快速发送</FormInfo>
                       <ActionButtonContainer>
                         <Button
                           type="button"
@@ -865,7 +865,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ targetId, targetType })
         />
         <FormFooter>
           <FormInfo>
-            {isLoggedIn ? '支持 Markdown 语法 · Ctrl + Enter 快速发送' : '访客评论需要审核后才能显示'}
+            {'支持 Markdown 语法 · Ctrl + Enter 快速发送'}
           </FormInfo>
           <Button
             type="submit"
