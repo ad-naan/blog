@@ -339,6 +339,25 @@ interface CommentSectionProps {
   targetType: CommentTargetType;
 }
 
+// 用户头像：图片正常时不渲染兜底头像，仅加载失败时切换，避免兜底头像溢出叠加
+const UserCommentAvatar: React.FC<{ src: string; seed: string }> = ({ src, seed }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return <CommentAvatar seed={seed} />;
+  }
+
+  return (
+    <Avatar hasImage={true}>
+      <img
+        src={src}
+        alt={seed}
+        onError={() => setFailed(true)}
+      />
+    </Avatar>
+  );
+};
+
 // 扁平化评论树的辅助函数
 const flattenComments = (comments: CommentType[], depth = 0): Array<CommentType & { depth: number }> => {
   const result: Array<CommentType & { depth: number }> = [];
@@ -623,30 +642,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ targetId, targetType })
         <CommentItem>
           <AvatarContainer>
             {avatarUrl && avatarUrl.trim() ? (
-              <Avatar hasImage={true}>
-                <img
-                  src={avatarUrl}
-                  alt={author}
-                  onError={(e) => {
-                    // 头像加载失败时隐藏图片，显示 CommentAvatar
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement!.style.background = 'transparent';
-                  }}
-                />
-                {/* 后备头像 - 当图片加载失败时显示 */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    zIndex: -1,
-                  }}
-                >
-                  <CommentAvatar seed={author} />
-                </div>
-              </Avatar>
+              <UserCommentAvatar src={avatarUrl} seed={author} />
             ) : (
               <CommentAvatar seed={author} />
             )}
