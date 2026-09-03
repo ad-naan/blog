@@ -19,7 +19,7 @@ class CommentService {
    */
   async create(commentData) {
     const comment = await Comment.create({
-      status: 'pending',
+      status: 'approved',
       ...commentData,
     });
 

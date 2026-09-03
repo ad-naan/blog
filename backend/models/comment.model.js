@@ -78,7 +78,7 @@ module.exports = sequelize => {
       },
       status: {
         type: DataTypes.ENUM('approved', 'pending', 'spam'),
-        defaultValue: 'pending',
+        defaultValue: 'approved',
       },
       // 访客信息字段
       ip: {

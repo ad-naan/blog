@@ -161,8 +161,8 @@ exports.createComment = asyncHandler(async (req, res) => {
     commentData.guestEmail = guestEmail.trim().toLowerCase();
     commentData.guestWebsite = guestWebsite?.trim() || null;
 
-    // 访客评论默认需要审核（除非配置为自动批准）
-    commentData.status = commentData.status || 'pending';
+    // 访客评论默认直接展示，可由管理员事后标记为垃圾（spam）
+    commentData.status = commentData.status || 'approved';
   }
 
   // 收集访客信息
