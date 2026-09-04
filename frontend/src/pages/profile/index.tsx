@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import styled from '@emotion/styled';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnimationEngine, SPRING_PRESETS } from '@/utils/ui/animation';
@@ -41,9 +41,11 @@ import {
   FiX,
   FiMusic,
   FiPlay,
+  FiPause,
 } from 'react-icons/fi';
 
 import { useNavigate } from 'react-router-dom';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import { API } from '@/utils/api';
 import type { UserProfile, UserStats, UserActivity, UserAchievement, SiteSettings, Project } from '@/types';
 import { storage } from '@/utils';
@@ -75,6 +77,19 @@ const ACTION_TO_TAB_MAP: Record<string, string> = {
   'view-projects': 'projects',
   'edit-site-settings': 'site-settings',
   'view-security': 'security',
+};
+
+// 所有合法 Tab
+const VALID_TABS = ['dashboard', 'likes', 'bookmarks', ...Object.values(ACTION_TO_TAB_MAP)];
+
+// 需要管理员权限的 Tab
+const ADMIN_TABS = ['guestbook', 'friends', 'users', 'categories', 'tags', 'projects', 'site-settings'];
+
+// URL ?tab= 参数 / localStorage 恢复时的规范化（兼容 OAuth 跳转的 ?tab=settings）
+const normalizeTab = (tab: unknown): string | null => {
+  if (typeof tab !== 'string' || !tab) return null;
+  const normalized = tab === 'settings' ? 'security' : tab;
+  return VALID_TABS.includes(normalized) ? normalized : null;
 };
 
 // 获取快捷操作图标
@@ -278,14 +293,9 @@ const DockItem = styled(motion.button) <{ active?: boolean }>`
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(4px);
   }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    transform: translateY(-8px) scale(1.15);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-    z-index: 10;
-    text-shadow: 0 0 15px var(--accent-color);
+  &:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 
     &::after {
       opacity: 1;
@@ -296,6 +306,9 @@ const DockItem = styled(motion.button) <{ active?: boolean }>`
   &:active {
     transform: scale(0.95);
   }
+`;
+
+const TabContent = styled.div`
 `;
 
 const TabContent = styled.div`
@@ -891,6 +904,16 @@ const Profile: React.FC = () => {
 
   const { variants } = useAnimationEngine();
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUserLoading, setIsUserLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSiteSettingsLoading, setIsSiteSettingsLoading] = useState(false);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [hasLoadedDashboard, setHasLoadedDashboard] = useState(false);
+  const [trendRange, setTrendRange] = useState<6 | 12>(6);
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
+
   const [user, setUser] = useState<UserProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats[]>([]);
   const [activities, setActivities] = useState<UserActivity[]>([]);
@@ -905,25 +928,23 @@ const Profile: React.FC = () => {
   const [isAddMusicModalOpen, setIsAddMusicModalOpen] = useState(false);
   const [categoryStats, setCategoryStats] = useState<{ name: string; value: number; color: string }[]>([]);
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isUserLoading, setIsUserLoading] = useState(false);
-  const [isSiteSettingsLoading, setIsSiteSettingsLoading] = useState(false);
-  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
-
   const { isAdmin, permissions } = useUserRole(user);
 
   const [activeTab, setActiveTab] = useState(() => {
-    const savedActiveTab = storage.local.get<string>('profile_active_tab');
-    return savedActiveTab || 'dashboard';
+    // 优先使用 URL 参数（支持 /profile?tab=xxx 深链），其次 localStorage
+    const fromUrl = normalizeTab(new URLSearchParams(window.location.search).get('tab'));
+    if (fromUrl) return fromUrl;
+    return normalizeTab(storage.local.get<string>('profile_active_tab')) || 'dashboard';
   });
 
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const mq = window.matchMedia('(max-width: 768px)');
+    const checkMobile = () => setIsMobile(mq.matches);
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    mq.addEventListener('change', checkMobile);
+    return () => mq.removeEventListener('change', checkMobile);
   }, []);
 
   useEffect(() => {
@@ -934,7 +955,32 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     storage.local.set('profile_active_tab', activeTab);
-  }, [activeTab]);
+    // 非管理员不能停留在管理类 Tab（用户降权后恢复的本地记录已失效）
+    if (!isAdmin && ADMIN_TABS.includes(activeTab)) {
+      setActiveTab('dashboard');
+    }
+  }, [activeTab, isAdmin]);
+
+  const { playTrack: playMusicTrack, togglePlay: toggleMusicPlay, currentTrack: currentMusicTrack, isPlaying: isMusicPlaying } = useMusicPlayer();
+
+  // label → stat 的 Map，避免渲染中反复线性查找
+  const statsMap = useMemo(() => {
+    const map = new Map<string, UserStats>();
+    userStats.forEach((s) => map.set(s.label, s));
+    return map;
+  }, [userStats]);
+  const statValue = (label: string) => statsMap.get(label)?.value ?? 0;
+
+  // 趋势图最大值与 Donut 总量预计算（原来在 map 内部 O(n²) 重复 reduce）
+  const trendMax = useMemo(() => Math.max(...publishTrend.map((d) => d.count), 1), [publishTrend]);
+  const trendData = useMemo(() => publishTrend.slice(-trendRange), [publishTrend, trendRange]);
+  const categoryTotal = useMemo(() => categoryStats.reduce((a, b) => a + b.value, 0), [categoryStats]);
+  const pendingTodoCount = useMemo(() => todoItems.reduce((acc, item) => acc + (item.count || 0), 0), [todoItems]);
+
+  const doneTodoCount = useMemo(() => {
+    const labels = ['发布文章', '发布手记', '评论回复'];
+    return labels.reduce((sum, label) => sum + (Number(statValue(label)) || 0), 0);
+  }, [statsMap]);
 
   const loadUserMusic = useCallback(async () => {
     setIsMusicLoading(true);
@@ -949,6 +995,23 @@ const Profile: React.FC = () => {
       setIsMusicLoading(false);
     }
   }, []);
+
+  // 播放/暂停我的音乐（接入全局音乐播放器）
+  const handlePlayMusic = useCallback((music: any) => {
+    const track = {
+      id: music.id,
+      songId: music.songId,
+      title: music.title,
+      artist: music.artist,
+      url: '',
+      pic: music.pic,
+    };
+    if (currentMusicTrack.id === music.id && isMusicPlaying) {
+      toggleMusicPlay();
+    } else {
+      playMusicTrack(track);
+    }
+  }, [currentMusicTrack, isMusicPlaying, playMusicTrack, toggleMusicPlay]);
 
   const handleDeleteMusic = useCallback(async (musicId: number, title: string) => {
     const confirmed = await adnaan.confirm.delete(`确定要删除“${title}”吗？`, '删除音乐');
@@ -965,7 +1028,8 @@ const Profile: React.FC = () => {
 
 
   const loadDashboard = useCallback(async () => {
-    setIsUserLoading(true);
+    setIsDashboardLoading(true);
+    setDashboardError(null);
     try {
       const response = await API.user.getDashboard();
       const data: any = response.data;
@@ -1030,9 +1094,13 @@ const Profile: React.FC = () => {
       })));
 
       loadUserMusic();
+      setHasLoadedDashboard(true);
     } catch (error: any) {
       console.error('加载仪表盘数据失败:', error);
+      setDashboardError(error?.message || '加载失败，请稍后重试');
+      adnaan.toast.error(error?.message || '加载仪表盘数据失败');
     } finally {
+      setIsDashboardLoading(false);
       setIsUserLoading(false);
     }
   }, [syncGlobalUser, loadUserMusic]);
@@ -1072,10 +1140,10 @@ const Profile: React.FC = () => {
   };
 
   const stripHtml = (html?: string) => {
+    // 用 DOMParser 解析：脚本/事件处理器不会像 innerHTML 赋值那样执行，避免 XSS
     if (!html) return '';
-    const tmp = document.createElement('DIV');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
   };
 
   const formatActivityTitle = (activity: any) => {
@@ -1093,17 +1161,36 @@ const Profile: React.FC = () => {
     try {
       const response = await API.siteSettings.getSiteSettings();
       setSiteSettings(response.data);
-    } catch (error) { }
+    } catch (error) {
+      // 站点设置仅站点设置 Tab 需要，静默即可，但保留日志便于排查
+      console.warn('加载站点设置失败:', error);
+    }
   };
 
   useEffect(() => {
+    // 基础身份数据仪表盘需要；站点设置仅管理员且进入对应 Tab 时才拉取
     loadDashboard();
-    loadSiteSettings();
-  }, [loadDashboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'site-settings' && !siteSettings) {
+      loadSiteSettings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin]);
+
+  // 重新进入仪表盘时刷新数据
+  useEffect(() => {
+    if (activeTab === 'dashboard' && hasLoadedDashboard) {
+      loadDashboard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleSaveProfile = async (formData: EditProfileForm, avatarFile?: File) => {
     if (!user) return;
-    setIsUserLoading(true);
+    setIsSaving(true);
     try {
       let avatarUrl = user.avatar;
       if (avatarFile) {
@@ -1115,18 +1202,24 @@ const Profile: React.FC = () => {
       setUser(updatedUser);
       syncGlobalUser(updatedUser);
       setIsEditModalOpen(false);
-    } catch (error: any) { } finally { setIsUserLoading(false); }
+      adnaan.toast.success('个人资料已更新');
+    } catch (error: any) {
+      adnaan.toast.error(error?.message || '保存个人资料失败，请重试');
+    } finally { setIsSaving(false); }
   };
 
   const handleAvatarChange = async (file: File) => {
     if (!user) return;
-    setIsUserLoading(true);
+    setIsSaving(true);
     try {
       const response = await API.user.uploadAvatar(file);
       const updatedUser: UserProfile = { ...user, avatar: withCacheBust(response.data.data.url) };
       setUser(updatedUser);
       syncGlobalUser(updatedUser);
-    } catch (error: any) { } finally { setIsUserLoading(false); }
+      adnaan.toast.success('头像已更新');
+    } catch (error: any) {
+      adnaan.toast.error(error?.message || '头像上传失败，请重试');
+    } finally { setIsSaving(false); }
   };
 
   const handleQuickAction = (actionId: string) => {
@@ -1160,8 +1253,10 @@ const Profile: React.FC = () => {
     try {
       const response = await API.siteSettings.updateSiteSettings(settings);
       setSiteSettings(response.data);
-      await loadSiteSettings();
-    } catch (error: any) { } finally { setIsSiteSettingsLoading(false); }
+      adnaan.toast.success('站点设置已保存');
+    } catch (error: any) {
+      adnaan.toast.error(error?.message || '保存站点设置失败，请重试');
+    } finally { setIsSiteSettingsLoading(false); }
   };
 
   const handleActivityClick = (activity: any) => { if (activity.link) navigate(activity.link); };
@@ -1186,40 +1281,63 @@ const Profile: React.FC = () => {
     };
 
     if (activeTab === 'dashboard') {
+      if (isDashboardLoading && !hasLoadedDashboard) {
+        return (
+          <ContentGlassCard style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: '1rem', color: 'var(--text-secondary)' }}>
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(var(--border-rgb), 0.2)', borderTopColor: 'var(--accent-color)' }} />
+            <span>正在加载仪表盘数据...</span>
+          </ContentGlassCard>
+        );
+      }
+
+      if (dashboardError && !user) {
+        return (
+          <ContentGlassCard style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: '1rem' }}>
+            <FiAlertCircle size={32} color="var(--error-color)" />
+            <span style={{ color: 'var(--text-secondary)' }}>{dashboardError}</span>
+            <Button variant="primary" size="small" onClick={loadDashboard}>重新加载</Button>
+          </ContentGlassCard>
+        );
+      }
+
       return (
         <DashboardLayout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <MainColumn>
             <GroupedCard>
               <GroupHeader>
                 <GroupTitle><FiBarChart2 /> 业务核心数据</GroupTitle>
-                <Button variant="secondary" size="small">查看详情</Button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select value={trendRange} onChange={(e) => setTrendRange(Number(e.target.value) as 6 | 12)} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid rgba(var(--border-rgb), 0.2)', borderRadius: 8, padding: '4px 8px', fontSize: '0.8rem', cursor: 'pointer' }} aria-label="趋势图时间范围">
+                    <option value={6}>近6个月</option>
+                    <option value={12}>近12个月</option>
+                  </select>
+                  <Button variant="secondary" size="small" onClick={() => setActiveTab('articles')}>查看详情</Button>
+                </div>
               </GroupHeader>
               <DataOverviewGrid>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <MetricBox>
                     <MetricLabel>总阅读量</MetricLabel>
-                    <MetricValue>{userStats.find((s) => s.label === '总阅读量')?.value || 0}</MetricValue>
+                    <MetricValue>{statValue('总阅读量')}</MetricValue>
                     <div style={{ height: '1.2em' }}></div>
                   </MetricBox>
                   <MetricBox>
                     <MetricLabel>总互动数</MetricLabel>
                     <MetricValue>
-                      {parseInt(String(userStats.find((s) => s.label === '获得点赞')?.value || 0)) +
-                        parseInt(String(userStats.find((s) => s.label === '评论回复')?.value || 0))}
+                      {(Number(statValue('获得点赞')) || 0) + (Number(statValue('评论回复')) || 0)}
                     </MetricValue>
-                    {userStats.find((s) => s.label === '评论回复')?.trend ? (
-                      <MetricTrend isPositive={userStats.find((s) => s.label === '评论回复')?.trend?.direction === 'up'}>
-                        <FiTrendingUp /> 评论环比 {userStats.find((s) => s.label === '评论回复')?.trend?.percentage}%
+                    {statsMap.get('评论回复')?.trend ? (
+                      <MetricTrend isPositive={statsMap.get('评论回复')?.trend?.direction === 'up'}>
+                        <FiTrendingUp /> 评论环比 {statsMap.get('评论回复')?.trend?.percentage}%
                       </MetricTrend>
                     ) : <div style={{ height: '1.2em' }}></div>}
                   </MetricBox>
                 </div>
                 <BarChartContainer>
-                  <BarChartTitle>近6个月发布趋势</BarChartTitle>
+                  <BarChartTitle>近{trendRange}个月发布趋势</BarChartTitle>
                   <BarsRow>
-                    {publishTrend.length > 0 ? publishTrend.slice(-6).map((item, i) => {
-                      const maxVal = Math.max(...publishTrend.map((d) => d.count), 1);
-                      const height = (item.count / maxVal) * 100;
+                    {trendData.length > 0 ? trendData.map((item, i) => {
+                      const height = (item.count / trendMax) * 100;
                       return (
                         <BarColumn key={item.date ?? i}>
                           <Bar height={height} initial={{ height: 0 }} animate={{ height: height + '%' }} transition={{ delay: i * 0.1, duration: 0.5 }} />
@@ -1233,22 +1351,21 @@ const Profile: React.FC = () => {
                   <svg width="160" height="160" viewBox="0 0 160 160">
                     <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(var(--border-rgb), 0.1)" strokeWidth="12" />
                     {categoryStats.map((item, i) => {
-                      const total = categoryStats.reduce((acc, cur) => acc + cur.value, 0);
-                      const percentage = (item.value / total) * 100;
+                      const percentage = (item.value / (categoryTotal || 1)) * 100;
                       const dashArray = 2 * Math.PI * 70;
                       const strokeDasharray = `${(percentage / 100) * dashArray} ${dashArray}`;
-                      const prevPercentage = categoryStats.slice(0, i).reduce((acc, cur) => acc + cur.value, 0) / total;
+                      const prevPercentage = categoryStats.slice(0, i).reduce((acc, cur) => acc + cur.value, 0) / (categoryTotal || 1);
                       const strokeDashoffset = -prevPercentage * dashArray;
                       return (
                         <motion.circle key={item.name} cx="80" cy="80" r="70" fill="none" stroke={item.color} strokeWidth="12" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.2, duration: 0.5 }} transform="rotate(-90 80 80)" />
                       );
                     })}
                     <text x="80" y="75" textAnchor="middle" fill="var(--text-secondary)" fontSize="12">总文章</text>
-                    <text x="80" y="100" textAnchor="middle" fill="var(--text-primary)" fontSize="24" fontWeight="bold">{userStats.find((s) => s.label === '发布文章')?.value || 0}</text>
+                    <text x="80" y="100" textAnchor="middle" fill="var(--text-primary)" fontSize="24" fontWeight="bold">{statValue('发布文章')}</text>
                   </svg>
                   <DonutLegend>
                     {categoryStats.map((item, i) => (
-                      <LegendItem key={item.name ?? i} color={item.color}>{item.name} ({Math.round((item.value / (categoryStats.reduce((a, b) => a + b.value, 0) || 1)) * 100)}%)</LegendItem>
+                      <LegendItem key={item.name ?? i} color={item.color}>{item.name} ({Math.round((item.value / (categoryTotal || 1)) * 100)}%)</LegendItem>
                     ))}
                   </DonutLegend>
                 </DonutChartContainer>
@@ -1284,17 +1401,17 @@ const Profile: React.FC = () => {
             <SideListCard>
               <SideListHeader>
                 <GroupTitle style={{ fontSize: '1rem' }}><FiCheck /> 待办事项</GroupTitle>
-                <Button variant="ghost" size="small" style={{ color: 'var(--accent-color)' }}>查看全部</Button>
+                <Button variant="ghost" size="small" style={{ color: 'var(--accent-color)' }} onClick={() => setActiveTab('articles')}>查看全部</Button>
               </SideListHeader>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '1rem 1.5rem', borderBottom: '1px solid rgba(var(--border-rgb), 0.05)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', flex: 1 }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{todoItems.reduce((acc, item) => acc + (item.count || 0), 0)}</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{pendingTodoCount}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>待处理</span>
                 </div>
                 <div style={{ width: 1, height: 30, background: 'rgba(var(--border-rgb), 0.1)' }}></div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', flex: 1 }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>0</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>已完成</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{doneTodoCount}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }} title="累计已发布的文章、手记与评论">已完成</span>
                 </div>
               </div>
               {todoItems.length > 0 ? todoItems.map((item) => (
@@ -1351,7 +1468,7 @@ const Profile: React.FC = () => {
           <IdentityColumn>
             {user && (
               <UnifiedIdentityCard initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <ProfileHero user={user} achievements={achievements} onEditProfile={() => setIsEditModalOpen(true)} onAvatarChange={handleAvatarChange} isLoading={isUserLoading} />
+                <ProfileHero user={user} achievements={achievements} onEditProfile={() => setIsEditModalOpen(true)} onAvatarChange={handleAvatarChange} isLoading={isUserLoading || isSaving} />
               </UnifiedIdentityCard>
             )}
             
@@ -1372,8 +1489,15 @@ const Profile: React.FC = () => {
                         <MusicTitle>{music.title}</MusicTitle>
                         <MusicArtist>{music.artist}</MusicArtist>
                       </MusicInfo>
-                      <Button variant="ghost" size="small" style={{ borderRadius: '50%', width: 28, height: 28, padding: 0, flexShrink: 0 }}>
-                        <FiPlay size={12} />
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        aria-label={currentMusicTrack.id === music.id && isMusicPlaying ? `暂停 ${music.title}` : `播放 ${music.title}`}
+                        title={currentMusicTrack.id === music.id && isMusicPlaying ? '暂停' : '播放'}
+                        style={{ borderRadius: '50%', width: 28, height: 28, padding: 0, flexShrink: 0, color: currentMusicTrack.id === music.id ? 'var(--accent-color)' : undefined }}
+                        onClick={() => handlePlayMusic(music)}
+                      >
+                        {currentMusicTrack.id === music.id && isMusicPlaying ? <FiPause size={12} /> : <FiPlay size={12} />}
                       </Button>
                       <Button
                         variant="ghost"
@@ -1406,14 +1530,14 @@ const Profile: React.FC = () => {
 
         {!isMobile && (
           <ControlDock initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5, ...SPRING_PRESETS.bouncy }}>
-            <DockItem onClick={() => navigate('/')} data-tooltip="返回首页" whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}><FiHome /></DockItem>
+            <DockItem onClick={() => navigate('/')} data-tooltip="返回首页" aria-label="返回首页" whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}><FiHome /></DockItem>
             <DockSeparator />
-            <DockItem onClick={() => setActiveTab('dashboard')} active={activeTab === 'dashboard'} data-tooltip="仪表盘" whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}><FiBarChart2 /></DockItem>
+            <DockItem onClick={() => setActiveTab('dashboard')} active={activeTab === 'dashboard'} data-tooltip="仪表盘" aria-label="仪表盘" whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}><FiBarChart2 /></DockItem>
             <DockSeparator />
             {permissions.quickActions.map((action) => {
               const isActive = activeTab === ACTION_TO_TAB_MAP[action.action];
               return (
-                <DockItem key={action.id} onClick={() => handleQuickAction(action.action)} active={isActive} data-tooltip={action.label} whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}>
+                <DockItem key={action.id} onClick={() => handleQuickAction(action.action)} active={isActive} data-tooltip={action.label} aria-label={action.label} whileHover={{ scale: 1.1, y: -5 }} whileTap={{ scale: 0.9 }}>
                   {getQuickActionIcon(action.action, action.icon)}
                   {isActive && <motion.div layoutId="dock-active-dot" style={{ position: 'absolute', bottom: -4, width: 4, height: 4, borderRadius: '50%', background: 'var(--accent-color)' }} />}
                 </DockItem>
