@@ -587,7 +587,7 @@ router.post('/', authMiddleware.verifyToken, authMiddleware.isAdmin, userControl
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', authMiddleware.verifyToken, userController.updateUser);
+router.put('/:id', authMiddleware.verifyToken, authMiddleware.isAdmin, userController.updateUser);
 
 /**
  * @swagger
@@ -624,6 +624,6 @@ router.put('/:id', authMiddleware.verifyToken, userController.updateUser);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id', authMiddleware.verifyToken, userController.deleteUser);
+router.delete('/:id', authMiddleware.verifyToken, authMiddleware.isAdmin, userController.deleteUser);
 
 module.exports = router;

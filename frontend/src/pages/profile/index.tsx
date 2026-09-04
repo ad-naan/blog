@@ -1221,7 +1221,7 @@ const Profile: React.FC = () => {
                       const maxVal = Math.max(...publishTrend.map((d) => d.count), 1);
                       const height = (item.count / maxVal) * 100;
                       return (
-                        <BarColumn key={i}>
+                        <BarColumn key={item.date ?? i}>
                           <Bar height={height} initial={{ height: 0 }} animate={{ height: height + '%' }} transition={{ delay: i * 0.1, duration: 0.5 }} />
                           <BarLabel>{item.date}</BarLabel>
                         </BarColumn>
@@ -1248,7 +1248,7 @@ const Profile: React.FC = () => {
                   </svg>
                   <DonutLegend>
                     {categoryStats.map((item, i) => (
-                      <LegendItem key={i} color={item.color}>{item.name} ({Math.round((item.value / (categoryStats.reduce((a, b) => a + b.value, 0) || 1)) * 100)}%)</LegendItem>
+                      <LegendItem key={item.name ?? i} color={item.color}>{item.name} ({Math.round((item.value / (categoryStats.reduce((a, b) => a + b.value, 0) || 1)) * 100)}%)</LegendItem>
                     ))}
                   </DonutLegend>
                 </DonutChartContainer>
@@ -1314,7 +1314,7 @@ const Profile: React.FC = () => {
             <SideListCard>
               <SideListHeader><GroupTitle style={{ fontSize: '1rem' }}><FiActivity /> 最近动态</GroupTitle></SideListHeader>
               {activities.slice(0, 6).map((activity: any, i) => (
-                <SideListItem key={i} onClick={() => handleActivityClick(activity)}>
+                <SideListItem key={activity.id ?? i} onClick={() => handleActivityClick(activity)}>
                   <ItemAvatar iconColor={activity.iconColor} iconBg={activity.iconBg}>{activity.icon || <FiActivity />}</ItemAvatar>
                   <ItemInfo><ItemDesc>{formatActivityTitle(activity)}</ItemDesc><ItemTime>{formatTime(activity.createdAt)}</ItemTime></ItemInfo>
                 </SideListItem>

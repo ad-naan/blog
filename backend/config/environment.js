@@ -71,6 +71,7 @@ class EnvironmentManager {
 
       // JWT配置
       jwt: {
+        // 不再提供默认 secret，未配置时启动校验会直接失败，避免使用可预测密钥签发令牌
         secret: process.env.JWT_SECRET,
         expiresIn: process.env.JWT_EXPIRES_IN || '1d',
         refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
@@ -131,7 +132,7 @@ class EnvironmentManager {
       socketIO: {
         // 基础配置
         enabled: process.env.SOCKET_IO_ENABLED === 'true',
-        authKey: process.env.SOCKET_IO_AUTH_KEY || 'duyong-socket-328',
+        authKey: process.env.SOCKET_IO_AUTH_KEY || '',
         path: process.env.SOCKET_IO_PATH || '/socket.io',
 
         // CORS配置

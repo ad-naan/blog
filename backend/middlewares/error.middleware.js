@@ -10,6 +10,36 @@ const {
 } = require('@/utils/errors');
 const environment = require('@/config/environment');
 
+// 需要脱敏的敏感字段名（小写匹配，包含式判断）
+const SENSITIVE_FIELD_PATTERN = /password|passphrase|secret|token|apikey|api_key|authorization|credential/i;
+
+/**
+ * 递归剥离请求数据中的敏感字段（用于日志脱敏）
+ */
+const sanitizeSensitiveData = (data, depth = 0) => {
+  if (depth > 3 || data === null || typeof data !== 'object') {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.slice(0, 20).map(item => sanitizeSensitiveData(item, depth + 1));
+  }
+
+  const sanitized = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (SENSITIVE_FIELD_PATTERN.test(key)) {
+      sanitized[key] = '[REDACTED]';
+    } else if (value !== null && typeof value === 'object') {
+      sanitized[key] = sanitizeSensitiveData(value, depth + 1);
+    } else if (typeof value === 'string' && value.length > 500) {
+      sanitized[key] = `${value.slice(0, 500)}...[truncated]`;
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+};
+
 /**
  * 错误处理中间件
  * 用于统一处理API请求中的错误
@@ -60,7 +90,7 @@ const errorHandler = (err, req, res, next) => {
   // 确定状态码
   const statusCode = error.statusCode || 500;
 
-  // 记录错误日志
+  // 记录错误日志（敏感字段脱敏，避免密码/令牌原文进入日志文件）
   const logLevel = statusCode >= 500 ? 'error' : 'warn';
   logger[logLevel]('应用错误', {
     code: error.code,
@@ -71,9 +101,9 @@ const errorHandler = (err, req, res, next) => {
     method: req.method,
     ip: req.ip,
     userId: req.user?.id || 'anonymous',
-    body: req.body,
-    query: req.query,
-    params: req.params,
+    body: sanitizeSensitiveData(req.body),
+    query: sanitizeSensitiveData(req.query),
+    params: sanitizeSensitiveData(req.params),
     stack: error.stack,
     isOperational: isOperationalError(error),
   });

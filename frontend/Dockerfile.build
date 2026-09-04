@@ -9,8 +9,8 @@ RUN npm config set registry https://registry.npmmirror.com
 # 复制依赖文件
 COPY package*.json ./
 
-# 清理并重新安装依赖（解决rollup可选依赖问题）
-RUN rm -rf node_modules package-lock.json && npm install
+# 使用 npm ci 基于 lockfile 安装（可复现构建；缺平台可选依赖时用 --no-audit --no-fund 加速）
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
 # 复制源代码
 COPY . .

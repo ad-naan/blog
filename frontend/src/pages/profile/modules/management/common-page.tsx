@@ -2,7 +2,7 @@
  * 通用管理页面组件
  * 统一处理：手记、文章、评论、收藏、点赞、用户、分类、标签等
  */
-import React, { useCallback, useMemo } from 'react';
+import React, { Suspense, lazy, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from '@emotion/styled';
 import { Button, Modal, Input, Select, Textarea, ColorPicker, Switch } from 'adnaan-ui';
@@ -23,7 +23,10 @@ import {
 } from 'react-icons/fi';
 import { API, formatDate } from '@/utils';
 import { RichTextParser } from '@/utils/editor/parser';
-import { RichTextEditor } from '@/components/rich-text';
+// TipTap 编辑器体积较大（含 lowlight/highlight.js），仅在项目编辑弹窗打开时才加载
+const RichTextEditor = lazy(() =>
+  import('@/components/rich-text').then((m) => ({ default: m.RichTextEditor })),
+);
 import { useVirtualScroll } from '@/hooks/useVirtualScroll';
 import { useModalScrollLock } from '@/hooks';
 import type { UserProfile, Category, Tag, Project, GuestbookMessage, FriendLink } from '@/types';
@@ -908,7 +911,7 @@ export const CommonPage: React.FC<CommonPageProps> = ({ type, initialStatusFilte
           {tags.length > 0 && (
             <TagsContainer>
               {tags.map((t: any, i: number) => (
-                <TagComponent key={i}>{typeof t === 'string' ? t : t.name}</TagComponent>
+                <TagComponent key={typeof t === 'string' ? t : t?.id ?? i}>{typeof t === 'string' ? t : t.name}</TagComponent>
               ))}
             </TagsContainer>
           )}
@@ -1294,11 +1297,13 @@ export const CommonPage: React.FC<CommonPageProps> = ({ type, initialStatusFilte
 
             <FormGroup>
               <Label>详细内容</Label>
-              <RichTextEditor
-                content={projectForm.content}
-                onChange={(content) => setProjectForm({ ...projectForm, content })}
-                placeholder="详细的项目介绍..."
-              />
+              <Suspense fallback={<div style={{ minHeight: 200 }}>编辑器加载中...</div>}>
+                <RichTextEditor
+                  content={projectForm.content}
+                  onChange={(content) => setProjectForm({ ...projectForm, content })}
+                  placeholder="详细的项目介绍..."
+                />
+              </Suspense>
             </FormGroup>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>

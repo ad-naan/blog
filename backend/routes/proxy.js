@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const proxyController = require('@/controllers/proxy.controller');
+const authMiddleware = require('@/middlewares/auth.middleware');
+const { generalLimiter } = require('@/middlewares/rate-limit.middleware');
 
 /**
  * @swagger
@@ -51,8 +53,8 @@ const proxyController = require('@/controllers/proxy.controller');
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/weather', proxyController.getWeather);
-router.get('/weather/:city', proxyController.getWeather);
+router.get('/weather', generalLimiter, proxyController.getWeather);
+router.get('/weather/:city', generalLimiter, proxyController.getWeather);
 
 /**
  * @swagger
@@ -76,8 +78,8 @@ router.get('/weather/:city', proxyController.getWeather);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.get('/ip-location', proxyController.getIPLocation);
-router.get('/ip-location/:ip', proxyController.getIPLocation);
+router.get('/ip-location', generalLimiter, proxyController.getIPLocation);
+router.get('/ip-location/:ip', generalLimiter, proxyController.getIPLocation);
 
 /**
  * @swagger
@@ -109,7 +111,7 @@ router.get('/ip-location/:ip', proxyController.getIPLocation);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.get('/music', proxyController.getMusicUrl);
+router.get('/music', generalLimiter, proxyController.getMusicUrl);
 
 /**
  * @swagger
@@ -137,6 +139,6 @@ router.get('/music', proxyController.getMusicUrl);
  *             schema:
  *               $ref: '#/components/schemas/Success'
  */
-router.post('/cache/clear', proxyController.clearCache);
+router.post('/cache/clear', authMiddleware.verifyToken, authMiddleware.isAdmin, proxyController.clearCache);
 
 module.exports = router;

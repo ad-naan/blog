@@ -249,7 +249,10 @@ class ProxyService {
       const data = await response.json();
 
       // 存入缓存（redisManager.set 会自动处理 JSON 序列化）
-      // await redisManager.set(cacheKey, data, this.CACHE_TTL.MUSIC_URL);
+      // 仅缓存看起来有效的数据，避免把错误响应长期缓存
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        await redisManager.set(cacheKey, data, this.CACHE_TTL.MUSIC_URL);
+      }
 
       logger.info(`✅ 获取音乐URL成功: ${server}:${id}`);
       return data;

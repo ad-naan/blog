@@ -67,6 +67,8 @@ class NoteService {
 
     const offset = (page - 1) * limit;
     const where = {};
+    // LIKE 关键词中的通配符需要转义，避免用户输入 %/_ 破坏查询语义
+    const escapeLike = keyword => keyword.replace(/[%_\\]/g, '\\$&');
 
     // 权限控制逻辑
     if (onlyPublic) {
@@ -98,18 +100,20 @@ class NoteService {
       where.isPrivate = isPrivate;
     }
 
-    // 标签筛选
+    // 标签筛选（对每个标签单独匹配并转义正则元字符，避免拼接 RegExp 注入）
     if (tags && tags.length > 0) {
+      const escapeRegExp = str => str.replace(/[.*+?^${}()|[\]\\"]/g, '\\$&');
       where.tags = {
-        [Op.regexp]: tags.map(tag => `"${tag}"`).join('|'),
+        [Op.regexp]: tags.map(tag => `"${escapeRegExp(tag)}"`).join('|'),
       };
     }
 
-    // 搜索功能
+    // 搜索功能（转义 LIKE 通配符）
     if (search) {
+      const escaped = escapeLike(search);
       where[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { content: { [Op.like]: `%${search}%` } },
+        { title: { [Op.like]: `%${escaped}%` } },
+        { content: { [Op.like]: `%${escaped}%` } },
       ];
     }
 
@@ -126,6 +130,8 @@ class NoteService {
 
     const { count, rows } = await Note.findAndCountAll({
       where,
+      // 列表不返回全文 content 大字段，降低响应体积
+      attributes: { exclude: ['content'] },
       include: [
         {
           model: User,

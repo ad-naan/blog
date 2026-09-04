@@ -24,21 +24,21 @@ services:
       NODE_ENV: production
 
       # ======================
-      # 公共 MySQL（新密码）
+      # 公共 MySQL（凭据从 docker/.env 注入，避免硬编码进仓库）
       # ======================
-      DB_HOST: base-mysql
+      DB_HOST: ${DB_HOST:-base-mysql}
       DB_PORT: 3306
-      DB_NAME: blog_prod
-      DB_USER: root
-      DB_PASSWORD: du@adnaan#328
+      DB_NAME: ${DB_NAME:-blog_prod}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?请在 docker/.env 中配置 DB_PASSWORD}
 
       # ======================
-      # 公共 Redis（新密码）
+      # 公共 Redis（凭据从 docker/.env 注入）
       # ======================
-      REDIS_HOST: base-redis
+      REDIS_HOST: ${REDIS_HOST:-base-redis}
       REDIS_PORT: 6379
       REDIS_DB: 1
-      REDIS_PASSWORD: du@adnaan#328
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 docker/.env 中配置 REDIS_PASSWORD}
 
     volumes:
       - ./backend/logs:/app/logs
@@ -60,7 +60,7 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
         VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://www.adnaan.site}
         VITE_SOCKET_WS_URL: ${VITE_SOCKET_WS_URL:-ws://www.adnaan.site}
-        VITE_SOCKET_IO_AUTH_KEY: ${VITE_SOCKET_IO_AUTH_KEY:-duyong-socket-328}
+        VITE_SOCKET_IO_AUTH_KEY: ${VITE_SOCKET_IO_AUTH_KEY:?请在 docker/.env 中配置 VITE_SOCKET_IO_AUTH_KEY}
         VITE_APP_TITLE: ${VITE_APP_TITLE:-博客系统}
         VITE_APP_DESCRIPTION: ${VITE_APP_DESCRIPTION:-基于Node.js的现代化博客系统}
         VITE_APP_VERSION: ${VITE_APP_VERSION:-1.0.0}

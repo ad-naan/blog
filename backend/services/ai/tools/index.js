@@ -1,7 +1,122 @@
 const { DynamicStructuredTool } = require('@langchain/core/tools');
 const { z } = require('zod');
 const postService = require('@/services/post.service');
-const { VM } = require('vm2');
+
+/**
+ * 安全的数学表达式求值器（递归下降解析，无 eval / vm）
+ * 支持：+ - * / % ^、括号、一元负号、常量 pi/e、白名单数学函数
+ */
+const SAFE_MATH_FUNCTIONS = {
+  sqrt: Math.sqrt,
+  cbrt: Math.cbrt,
+  abs: Math.abs,
+  sin: Math.sin,
+  cos: Math.cos,
+  tan: Math.tan,
+  asin: Math.asin,
+  acos: Math.acos,
+  atan: Math.atan,
+  log: Math.log,
+  log2: Math.log2,
+  log10: Math.log10,
+  exp: Math.exp,
+  pow: Math.pow,
+  round: Math.round,
+  floor: Math.floor,
+  ceil: Math.ceil,
+  sign: Math.sign,
+  min: Math.min,
+  max: Math.max,
+};
+const SAFE_MATH_CONSTANTS = { pi: Math.PI, e: Math.E };
+
+function safeMathEvaluate(expression) {
+  const src = String(expression).replace(/\s+/g, '');
+  if (!src) throw new Error('空表达式');
+  // 只允许安全字符（数字、运算符、括号、点、逗号、字母标识符）
+  if (!/^[0-9a-zA-Z+\-*/%^().,]+$/.test(src)) {
+    throw new Error('包含不允许的字符');
+  }
+
+  let pos = 0;
+  const peek = () => src[pos];
+  const eat = ch => {
+    if (src[pos] === ch) {
+      pos += 1;
+      return true;
+    }
+    return false;
+  };
+
+  const parseExpression = () => {
+    let value = parseTerm();
+    for (;;) {
+      if (eat('+')) value += parseTerm();
+      else if (eat('-')) value -= parseTerm();
+      else return value;
+    }
+  };
+
+  const parseTerm = () => {
+    let value = parseUnary();
+    for (;;) {
+      if (eat('*')) value *= parseUnary();
+      else if (eat('/')) value /= parseUnary();
+      else if (eat('%')) value %= parseUnary();
+      else return value;
+    }
+  };
+
+  const parseUnary = () => {
+    if (eat('-')) return -parseUnary();
+    if (eat('+')) return parseUnary();
+    return parsePower();
+  };
+
+  const parsePower = () => {
+    const base = parseAtom();
+    if (eat('^')) return Math.pow(base, parseUnary()); // 右结合
+    return base;
+  };
+
+  const parseAtom = () => {
+    // 括号
+    if (eat('(')) {
+      const value = parseExpression();
+      if (!eat(')')) throw new Error('括号不匹配');
+      return value;
+    }
+    // 数字
+    const numMatch = /^\d+(\.\d+)?/.exec(src.slice(pos));
+    if (numMatch) {
+      pos += numMatch[0].length;
+      return parseFloat(numMatch[0]);
+    }
+    // 标识符：常量或函数调用
+    const idMatch = /^[a-zA-Z]+/.exec(src.slice(pos));
+    if (idMatch) {
+      const name = idMatch[0].toLowerCase();
+      pos += idMatch[0].length;
+      if (name in SAFE_MATH_CONSTANTS) {
+        return SAFE_MATH_CONSTANTS[name];
+      }
+      if (name in SAFE_MATH_FUNCTIONS) {
+        if (!eat('(')) throw new Error(`函数 ${name} 需要括号调用`);
+        const args = [parseExpression()];
+        while (eat(',')) args.push(parseExpression());
+        if (!eat(')')) throw new Error('括号不匹配');
+        return SAFE_MATH_FUNCTIONS[name](...args);
+      }
+      throw new Error(`未知的标识符: ${name}`);
+    }
+    throw new Error(`无法解析的位置: ${peek()}`);
+  };
+
+  const result = parseExpression();
+  if (pos !== src.length) throw new Error(`多余的内容: ${src.slice(pos)}`);
+  if (!Number.isFinite(result)) throw new Error('结果不是有限数字');
+  return result;
+}
 
 /**
  * 博客搜索工具 (真实数据)
@@ -44,7 +159,8 @@ const blogSearchTool = new DynamicStructuredTool({
       const simplifiedPosts = posts.map(p => ({
         id: p.id,
         title: p.title,
-        summary: p.summary || p.content.substring(0, 100) + '...',
+        // findAll 列表已不返回 content，仅用 summary
+        summary: p.summary || '',
         publishedAt: p.publishedAt,
       }));
 
@@ -103,54 +219,16 @@ const calculatorTool = new DynamicStructuredTool({
   description:
     '执行数学计算。支持基本的算术运算（加减乘除、幂运算、三角函数等）。当用户需要计算数学表达式时使用。',
   schema: z.object({
-    expression: z.string().describe('数学表达式，如 "2 + 2" 或 "Math.sqrt(16)"'),
+    expression: z.string().describe('数学表达式，如 "2 + 2" 或 "sqrt(16) + pow(2, 3)"'),
   }),
   func: async ({ expression }) => {
     console.log(`🧮 [Tool] Calculating: ${expression}`);
     try {
-      // 使用 vm2 沙箱安全执行
-      const vm = new VM({
-        timeout: 1000,
-        sandbox: { Math },
-      });
-      const result = vm.run(`(${expression})`);
+      // 使用无 eval 的递归下降解析器安全求值（vm2 已废弃且有沙箱逃逸 CVE，已移除）
+      const result = safeMathEvaluate(expression);
       return `计算结果: ${result}`;
     } catch (error) {
       return `计算出错: ${error.message}。请确保表达式语法正确。`;
-    }
-  },
-});
-
-/**
- * 代码执行工具（沙箱）
- */
-const codeRunnerTool = new DynamicStructuredTool({
-  name: 'run_javascript',
-  description: `在安全的沙箱环境中执行简单的 JavaScript 代码片段。
-  
-  **适用场景**：
-  - 用户想测试一段简单的 JS 代码
-  - 演示某个算法或函数的执行结果
-  - 快速验证代码逻辑
-  
-  **限制**：
-  - 仅支持纯 JavaScript，不支持 Node.js 模块
-  - 执行时间限制 1 秒
-  - 无法访问文件系统或网络`,
-  schema: z.object({
-    code: z.string().describe('要执行的 JavaScript 代码'),
-  }),
-  func: async ({ code }) => {
-    console.log(`⚡ [Tool] Running code: ${code.substring(0, 50)}...`);
-    try {
-      const vm = new VM({
-        timeout: 1000,
-        sandbox: { console: { log: (...args) => args.join(' ') } },
-      });
-      const result = vm.run(code);
-      return `执行结果:\n${result !== undefined ? result : '(无返回值)'}`;
-    } catch (error) {
-      return `执行出错: ${error.message}`;
     }
   },
 });
@@ -185,7 +263,6 @@ module.exports = {
   currentTimeTool,
   randomQuoteTool,
   calculatorTool,
-  codeRunnerTool,
   techTipTool,
   // 导出所有工具列表
   tools: [
@@ -193,7 +270,6 @@ module.exports = {
     currentTimeTool,
     randomQuoteTool,
     calculatorTool,
-    codeRunnerTool,
     techTipTool,
   ],
 };

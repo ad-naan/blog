@@ -116,8 +116,13 @@ class PostService {
   async findAll(options = {}) {
     const { page = 1, limit = 10, status, userId, tagId, search, year, isAdmin = false } = options;
 
+    // LIKE 关键词中的通配符需要转义，避免用户输入 %/_ 破坏查询语义
+    const escapeLike = keyword => keyword.replace(/[%_\\]/g, '\\$&');
+
     const query = {
       where: {},
+      // 列表不返回全文 content 大字段，显著降低响应体积与内存占用
+      attributes: { exclude: ['content'] },
       include: [
         {
           model: User,
@@ -157,11 +162,12 @@ class PostService {
       query.include[1].where = { id: tagId };
     }
 
-    // 搜索功能
+    // 搜索功能（转义 LIKE 通配符；content 全表扫描代价高，仅匹配标题 + 摘要）
     if (search) {
+      const escaped = escapeLike(search);
       query.where[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { content: { [Op.like]: `%${search}%` } },
+        { title: { [Op.like]: `%${escaped}%` } },
+        { summary: { [Op.like]: `%${escaped}%` } },
       ];
     }
 

@@ -352,6 +352,8 @@ const UserCommentAvatar: React.FC<{ src: string; seed: string }> = ({ src, seed 
       <img
         src={src}
         alt={seed}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
       />
     </Avatar>

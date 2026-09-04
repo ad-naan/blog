@@ -13,8 +13,9 @@ RUN npm ci --only=production
 # 复制源代码
 COPY . .
 
-# 创建日志目录
-RUN mkdir -p logs
+# 创建日志/上传目录并赋权（卷挂载点），以非 root 用户运行
+RUN mkdir -p logs uploads && chown -R node:node /app
+USER node
 
 # 设置环境变量
 ENV NODE_ENV=production

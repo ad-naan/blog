@@ -125,8 +125,8 @@ class SocketManager {
         return next(new Error('Authentication required'));
       }
 
-      // 验证令牌
-      if (authToken !== socketAuthKey) {
+      // 验证令牌（authKey 未配置时直接拒绝，避免空 key 导致无鉴权连接）
+      if (!socketAuthKey || authToken !== socketAuthKey) {
         logger.warn('❌ Socket.IO连接被拒绝: 鉴权令牌无效', {
           ip: socket.handshake.address,
           userAgent: socket.handshake.headers['user-agent'],

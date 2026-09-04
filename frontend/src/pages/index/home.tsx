@@ -72,6 +72,9 @@ const Home: React.FC = () => {
   // 贡献数据
   const [chartData, setChartData] = useState<any[]>([]);
 
+  // 内容加载状态（供骨架屏使用）
+  const [contentLoading, setContentLoading] = useState(true);
+
   // 加载文章列表
   const loadArticles = async () => {
     try {
@@ -92,10 +95,10 @@ const Home: React.FC = () => {
     }
   };
 
-  // 加载精选项目
+  // 加载精选项目（轮播最多展示 10 个，无需全量拉取）
   const loadProjects = async () => {
     try {
-      const response = await API.project.getFeaturedProjects({ page: 1, limit: 100 });
+      const response = await API.project.getFeaturedProjects({ page: 1, limit: 10 });
       setProjects(response.data || []);
     } catch (error) {
       console.error('加载项目失败:', error);
@@ -121,16 +124,12 @@ const Home: React.FC = () => {
     }
   };
 
-  // 初始数据加载
+  // 初始数据加载（三个独立请求并行执行，消除瀑布式延迟）
   useEffect(() => {
     let isMounted = true;
     const initialize = async () => {
-      if (!isMounted) return;
-      await loadArticles();
-      if (!isMounted) return;
-      await loadNotes();
-      if (!isMounted) return;
-      await loadProjects();
+      await Promise.all([loadArticles(), loadNotes(), loadProjects()]);
+      if (isMounted) setContentLoading(false);
     };
     initialize();
     return () => {
@@ -165,8 +164,8 @@ const Home: React.FC = () => {
         >
           {/* 左侧栏 */}
           <LeftColumn>
-            <ArticlesSection articles={articles} loading={false} />
-            <NotesSection notes={notes} loading={false} />
+            <ArticlesSection articles={articles} loading={contentLoading} />
+            <NotesSection notes={notes} loading={contentLoading} />
           </LeftColumn>
 
           {/* 右侧栏 */}
