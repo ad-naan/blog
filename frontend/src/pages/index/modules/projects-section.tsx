@@ -1,452 +1,496 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import styled from '@emotion/styled';
-import { motion, Variants, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { FiArrowRight, FiStar, FiGithub, FiCode, FiCalendar, FiFolderPlus, FiExternalLink } from 'react-icons/fi';
+import { FiStar, FiGithub, FiCode, FiFolderPlus, FiExternalLink, FiArrowRight } from 'react-icons/fi';
 import { SiGitee } from 'react-icons/si';
 import { formatDate } from '@/utils';
 import { useAnimationEngine, useSmartInView, useSpringInteractions } from '@/utils/ui/animation';
 import { Icon } from '@/components/common/icon';
-import { RadarChart } from '@/components/charts/radar-chart';
 import { getLanguageIcon, calculateProjectRadarData } from '@/utils/ui/language-icons';
 import { ProjectsSectionProps } from './types';
 
-// Styled Components
+// === 布局（全扁平：无卡片、无边框、无底色容器） ===
 const ProjectsWrapper = styled(motion.section)`
-  margin: 3rem 0 4rem;
+  margin: 0 0 4.5rem;
 `;
 
-const CreativeSectionHeader = styled.div`
-  text-align: center;
-  margin: 3.5rem 0 2.5rem;
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 2.25rem;
 
-  @media (max-width: 768px) {
-    margin: 2.5rem 0 2rem;
+  @media (max-width: 968px) {
+    margin: 0 0 1.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 `;
 
-const CreativeSectionTitle = styled(motion.h2)`
-  font-size: 1.3rem;
+// 等宽注释体标题，呼应全站 // 母题
+const SectionTitle = styled(motion.h2)`
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   letter-spacing: 0.02em;
-
-  @media (max-width: 768px) {
-    font-size: 1.4rem;
+  &::before {
+    content: '// ';
+    color: var(--accent-color);
   }
 `;
 
 const SectionSubtitle = styled(motion.p)`
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
   margin: 0;
-  font-weight: 400;
-  opacity: 0.8;
+  opacity: 0.85;
+  line-height: 1.6;
+  max-width: 480px;
+`;
 
-  @media (max-width: 768px) {
-    font-size: 0.85rem;
+// 数据摘要：纯文本
+const StatsRow = styled(motion.div)`
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 968px) {
+    gap: 1.25rem;
   }
 `;
 
-const ProjectsGrid = styled(motion.div)`
+const StatItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+`;
+
+const StatValue = styled.span`
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  line-height: 1.2;
+`;
+
+const StatLabel = styled.span`
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+`;
+
+// 双栏：中间一条虚线，无任何容器盒
+const FlatLayout = styled(motion.div)`
   display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 3rem;
-  padding: 2rem 0;
-  position: relative;
-  min-height: 500px;
-  width: 100%;
-  max-width: 100%;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 60%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 2px;
-    height: 100px;
-    background: linear-gradient(
-      to bottom,
-      transparent 0%,
-      var(--border-color) 15%,
-      var(--border-color) 85%,
-      transparent 100%
-    );
-    opacity: 0.6;
-
-    @media (max-width: 968px) {
-      display: none;
-    }
-  }
+  grid-template-columns: minmax(260px, 2fr) 3fr;
 
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
-    gap: 2rem;
-    min-height: auto;
-    box-sizing: border-box;
   }
 `;
 
-const ProjectMainCard = styled(motion.div)`
-  position: relative;
-  height: 100%;
-
-  @media (max-width: 968px) {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: visible;
-  }
-`;
-
-const ProjectDetailContainer = styled(motion.div)`
+// === 左栏：纯文本 ls 清单 ===
+const ListColumn = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  height: 100%;
-  cursor: ew-resize;
+  padding-right: 2rem;
+`;
 
-  transform: translateZ(0);
-  will-change: transform;
-  backface-visibility: hidden;
-  perspective: 1000px;
+const PromptLine = styled.div`
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  padding: 0 0 0.75rem;
 
-  @media (max-width: 968px) {
-    width: 100%;
-    max-width: 100%;
-    touch-action: pan-y pinch-zoom;
-    gap: 1rem;
-    box-sizing: border-box;
+  .prompt {
+    color: var(--accent-color);
+    margin-right: 0.4rem;
   }
 `;
 
-const ProjectInfo = styled.div`
+const RepoList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  width: 100%;
-  max-width: 100%;
-
-  @media (max-width: 968px) {
-    gap: 0.75rem;
-  }
 `;
 
-const ProjectHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  position: relative;
-  padding-right: 6rem;
-  width: 100%;
-  max-width: 100%;
-
-  @media (max-width: 968px) {
-    flex-direction: row;
-    padding-right: 0;
-    gap: 0.7rem;
-    margin-bottom: 1rem;
-    box-sizing: border-box;
-  }
-`;
-
-const ProjectIcon = styled.div<{ size?: 'large' | 'small' }>`
-  width: ${(props) => (props.size === 'small' ? '32px' : '56px')};
-  height: ${(props) => (props.size === 'small' ? '32px' : '56px')};
-  border-radius: ${(props) => (props.size === 'small' ? '10px' : '14px')};
-  background: rgba(var(--accent-rgb), 0.1);
+// 单行仓库：纯文本行，激活仅靠颜色 + 指针符号
+const RepoRow = styled.button<{ active?: boolean }>`
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--accent-color);
-  font-size: ${(props) => (props.size === 'small' ? '1rem' : '1.75rem')};
-  flex-shrink: 0;
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-
-  @media (max-width: 968px) {
-    width: ${(props) => (props.size === 'small' ? '28px' : '42px')};
-    height: ${(props) => (props.size === 'small' ? '28px' : '42px')};
-    border-radius: ${(props) => (props.size === 'small' ? '8px' : '10px')};
-    font-size: ${(props) => (props.size === 'small' ? '0.9rem' : '1.3rem')};
-  }
-`;
-
-const ProjectTitleWrapper = styled.div`
-  flex: 1;
-  min-width: 0;
-  max-width: 100%;
-`;
-
-const ProjectTitle = styled.h3`
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: var(--text-primary);
-  transition: color 0.2s ease;
-  line-height: 1.4;
-  word-break: break-word;
-  overflow-wrap: break-word;
-
-  @media (max-width: 968px) {
-    font-size: 0.9rem;
-    margin: 0 0 0.3rem 0;
-    line-height: 1.3;
-  }
-`;
-
-const ProjectDescription = styled.p`
-  font-size: 0.9rem;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
   color: var(--text-secondary);
-  line-height: 1.6;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  ${(props) =>
+    props.active &&
+    `
+    color: var(--text-primary);
+  `}
+
+  .marker {
+    width: 0.9rem;
+    flex-shrink: 0;
+    color: var(--accent-color);
+    opacity: ${(props) => (props.active ? 1 : 0)};
+    transition: opacity 0.15s ease;
+  }
+
+  .line-no {
+    color: var(--text-tertiary);
+    opacity: 0.55;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+
+    ${(props) =>
+      props.active &&
+      `
+      color: var(--accent-color);
+      opacity: 1;
+    `}
+  }
+
+  .lang-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .repo-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    ${(props) =>
+      props.active &&
+      `
+      color: var(--accent-color);
+    `}
+  }
+
+  .leader {
+    flex: 1;
+    min-width: 12px;
+    border-bottom: 1px dotted var(--border-color);
+    opacity: 0.6;
+    transform: translateY(-3px);
+  }
+
+  .stars {
+    color: var(--text-tertiary);
+    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+`;
+
+const CdLine = styled.div`
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  padding-top: 0.75rem;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+
+  .prompt {
+    color: var(--accent-color);
+  }
+
+  .cmd {
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 7px;
+    height: 0.95em;
+    background: var(--accent-color);
+    animation: caret-blink 1.1s steps(2) infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes caret-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+`;
+
+// === 右栏：纯文本 README ===
+const ReadmeColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding-left: 2rem;
+  border-left: 1px dashed var(--border-color);
+
+  @media (max-width: 968px) {
+    padding-left: 0;
+    padding-top: 1.5rem;
+    border-left: none;
+    border-top: 1px dashed var(--border-color);
+  }
+`;
+
+// 面包屑路径行
+const Breadcrumb = styled.div`
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  padding-bottom: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  .sep {
+    margin: 0 0.35rem;
+    opacity: 0.5;
+  }
+
+  .file {
+    color: var(--accent-color);
+  }
+`;
+
+const ReadmeBody = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  cursor: ew-resize;
+  flex: 1;
+
+  @media (max-width: 968px) {
+    touch-action: pan-y pinch-zoom;
+    cursor: default;
+  }
+`;
+
+// 标题行：裸语言图标 + 标题（无图标底盒）
+const ReadmeHeader = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+
+  .lang-icon {
+    display: inline-flex;
+    align-items: center;
+    transform: translateY(2px);
+  }
+`;
+
+const ReadmeTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.3;
+  word-break: break-word;
+`;
+
+const ViewDetailLink = styled(Link)`
+  font-size: 0.78rem;
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.45);
+  padding-bottom: 1px;
+
+  &:hover {
+    border-bottom-style: solid;
+  }
+`;
+
+const ReadmeDescription = styled.p`
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  word-break: break-word;
-  overflow-wrap: break-word;
-
-  @media (max-width: 968px) {
-    font-size: 0.75rem;
-    line-height: 1.4;
-    -webkit-line-clamp: 2;
-  }
 `;
 
-const ViewDetailLink = styled(Link)`
-  position: absolute;
-  top: 0;
-  right: 0;
-  font-size: 0.8rem;
+// 关键词：纯文本 #tag，无标签底
+const KeywordFlow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+`;
+
+const KeywordTag = styled.span`
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   color: var(--accent-color);
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  opacity: 0.85;
+`;
+
+// 元信息：一行纯文本键值
+const MetaRow = styled.div`
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  font-family: var(--font-mono);
+`;
 
-  &:hover {
-    color: var(--accent-color);
-    opacity: 0.8;
-    transform: translateX(2px);
+const MetaItem = styled.div`
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+
+  .k {
+    color: var(--text-tertiary);
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
-  svg {
-    transition: transform 0.2s ease;
-  }
-
-  &:hover svg {
-    transform: translateX(2px);
-  }
-
-  @media (max-width: 968px) {
-    display: none;
+  .v {
+    color: var(--text-primary);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
   }
 `;
 
-const ProjectDataSection = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-top: 1rem;
-  width: 100%;
-  max-width: 100%;
-
-  @media (max-width: 968px) {
-    display: flex;
-    flex-direction: row;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-    align-items: flex-start;
-    box-sizing: border-box;
-  }
-`;
-
-const DataCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-  max-width: 100%;
-
-  @media (max-width: 968px) {
-    flex: 1;
-    min-width: 0;
-    max-width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-  }
-`;
-
-const RadarChartWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  @media (max-width: 968px) {
-    width: 110px;
-    flex-shrink: 0;
-
-    canvas {
-      width: 110px !important;
-      height: 110px !important;
-    }
-  }
-`;
-
-const DataItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  border-bottom: 1px solid rgba(var(--border-color-rgb, 229, 231, 235), 0.5);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 968px) {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0.2rem;
-    padding: 0.5rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background: rgba(var(--accent-rgb), 0.03);
-    border-bottom: none !important;
-    min-height: auto;
-  }
-`;
-
-const DataLabel = styled.span`
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  @media (max-width: 968px) {
-    font-size: 0.6rem;
-    opacity: 0.85;
-    font-weight: 500;
-
-    svg {
-      width: 10px;
-      height: 10px;
-    }
-  }
-`;
-
-const DataValue = styled.span`
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-
-  @media (max-width: 968px) {
-    font-size: 0.5rem;
-    font-weight: 700;
-    word-break: break-word;
-    width: 100%;
-  }
-`;
-
-const LanguageTag = styled.span<{ color: string }>`
+const LangName = styled.span<{ color: string }>`
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  gap: 0.3rem;
 
   &::before {
     content: '';
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background-color: ${(props) => props.color};
   }
-  @media (max-width: 968px) {
-    font-size: 0.5rem;
+`;
+
+// 底部：指标条 + 文本链接，一条虚线分隔
+const ReadmeFooter = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--border-color);
+  flex-wrap: wrap;
+`;
+
+// 终端式指标条：metrics --enable-hot-tracker ▓▓▓░░ 62
+const MetricsBars = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.45rem 2rem;
+  flex: 1;
+  min-width: 260px;
+`;
+
+const MetricBar = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  white-space: nowrap;
+
+  .label {
+    color: var(--text-tertiary);
+    width: 2.5em;
+    flex-shrink: 0;
+  }
+
+  .track {
+    color: var(--accent-color);
+    letter-spacing: -0.5px; /* 让 ▓ 字符更紧凑 */
+    opacity: 0.9;
+  }
+
+  .track .off {
+    color: var(--border-color);
+  }
+
+  .value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.7rem;
   }
 `;
 
 const ProjectLinks = styled.div`
   display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-
-  @media (max-width: 968px) {
-    grid-column: 1 / -1;
-    margin-top: 0.5rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--border-color);
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
+  gap: 1.1rem;
+  flex-wrap: wrap;
 `;
 
-const ProjectLink = styled(motion.a)`
+// 文本链接：无按钮底，只有虚线下划线
+const FlatLink = styled(motion.a)`
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--accent-color);
   text-decoration: none;
-  color: var(--text-secondary);
-  background: transparent;
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.4);
+  padding-bottom: 1px;
 
   &:hover {
-    color: var(--accent-color);
-    background: rgba(var(--accent-rgb), 0.08);
+    border-bottom-style: solid;
   }
 
   svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  @media (max-width: 968px) {
-    padding: 0.3rem 0.5rem;
-    font-size: 0.65rem;
-    border-radius: 5px;
-
-    svg {
-      width: 11px;
-      height: 11px;
-    }
+    width: 13px;
+    height: 13px;
   }
 `;
 
-const MobileProjectIndicator = styled.div`
+// 移动端指示点
+const MobileIndicator = styled.div`
   display: none;
 
   @media (max-width: 968px) {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-
-    .dots {
-      display: flex;
-      gap: 0.4rem;
-      align-items: center;
-    }
+    justify-content: center;
+    gap: 0.4rem;
+    padding-top: 1.25rem;
   }
 `;
 
-const Dot = styled(motion.div)<{ active?: boolean }>`
+const Dot = styled.div<{ active?: boolean }>`
   width: ${(props) => (props.active ? '20px' : '6px')};
   height: 6px;
   border-radius: 3px;
@@ -454,262 +498,50 @@ const Dot = styled(motion.div)<{ active?: boolean }>`
   transition: all 0.3s ease;
 `;
 
-// 右侧几何拼图容器
-const GeometryGridContainer = styled.div`
-  position: relative;
-  width: 100%;
-  height: 500px;
-
-  @media (max-width: 968px) {
-    display: none; /* 手机端隐藏 */
-  }
-`;
-
 const EmptyState = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  text-align: center;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 3rem 0;
   color: var(--text-secondary);
-  min-height: 420px;
 
   svg {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 1rem;
+    width: 40px;
+    height: 40px;
     opacity: 0.4;
   }
 
   p {
-    font-size: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
     margin: 0;
     opacity: 0.7;
   }
 `;
 
-// 几何块标题（悬停显示）- 需要在 GeometryBlock 之前声明
-const GeometryBlockTitle = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 0.5rem;
-  background: linear-gradient(
-    to top,
-    rgba(var(--accent-rgb), 0.95) 0%,
-    rgba(var(--accent-rgb), 0.85) 50%,
-    transparent 100%
-  );
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  backdrop-filter: blur(4px);
-
-  /* 默认隐藏 */
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-`;
-
-const GeometryBlockContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  color: var(--accent-color);
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-`;
-
-// 几何块 - 不规则尺寸
-const GeometryBlock = styled(motion.div)<{
-  isActive: boolean;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}>`
-  position: absolute;
-  left: calc(${(props) => props.x}% + 4px);
-  top: calc(${(props) => props.y}% + 4px);
-  width: calc(${(props) => props.width}% - 8px);
-  height: calc(${(props) => props.height}% - 8px);
-
-  /* 默认（亮色模式） */
-  background: ${(props) => (props.isActive ? 'rgba(var(--accent-rgb), 0.15)' : 'rgba(var(--accent-rgb), 0.06)')};
-  border: 1px solid ${(props) => (props.isActive ? 'var(--accent-color)' : 'rgba(var(--accent-rgb), 0.15)')};
-
-  /* 暗黑模式适配 */
-  [data-theme='dark'] & {
-    background: ${(props) => (props.isActive ? 'rgba(var(--accent-rgb), 0.2)' : 'rgba(255, 255, 255, 0.03)')};
-    border-color: ${(props) => (props.isActive ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.1)')};
-  }
-
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-
-  /* 扁平化装饰 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, transparent 0%, rgba(var(--accent-rgb), 0.1) 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  &:hover {
-    background: rgba(var(--accent-rgb), 0.12);
-    border-color: ${(props) => (props.isActive ? 'var(--accent-color)' : 'rgba(var(--accent-rgb), 0.5)')};
-    box-shadow: 0 10px 30px -10px rgba(var(--accent-rgb), 0.3);
-    z-index: 10;
-
-    /* 暗黑模式 hover */
-    [data-theme='dark'] & {
-      background: rgba(var(--accent-rgb), 0.25);
-      border-color: ${(props) => (props.isActive ? 'var(--accent-color)' : 'rgba(var(--accent-rgb), 0.6)')};
-    }
-
-    &::before {
-      opacity: 1;
-    }
-
-    /* 悬停时显示标题 */
-    ${GeometryBlockTitle} {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @media (max-width: 968px) {
-    border-radius: 6px;
-  }
-`;
-
-// 定义呼吸动画
-const breathingVariants: Variants = {
-  idle: {
-    scale: 1,
-    opacity: 1,
-    transition: {
-      duration: 3,
-      repeat: Infinity,
-      repeatType: 'reverse' as const,
-      ease: 'easeInOut',
-    },
-  },
-  hover: {
-    scale: 1.05,
-    opacity: 1,
-    zIndex: 10,
-    transition: {
-      type: 'spring',
-      stiffness: 300,
-      damping: 15,
-    },
-  },
-  active: {
-    scale: 1.02,
-    opacity: 1,
-    zIndex: 5,
-  },
-};
-
-// 生成几何布局
-const generateGeometryLayout = (count: number) => {
-  if (count === 0) return [];
-  if (count === 1) return [{ x: 0, y: 0, width: 100, height: 100 }];
-
-  const layouts: Array<{ x: number; y: number; width: number; height: number }> = [];
-
-  const splitArea = (x: number, y: number, width: number, height: number, remaining: number): void => {
-    if (remaining === 1) {
-      layouts.push({ x, y, width, height });
-      return;
-    }
-
-    const aspectRatio = width / height;
-    const shouldCutVertically = aspectRatio > 1.2 ? Math.random() > 0.3 : Math.random() < 0.3;
-
-    if (shouldCutVertically) {
-      const minRatio = 0.3;
-      const maxRatio = 0.7;
-      const splitRatio = minRatio + Math.random() * (maxRatio - minRatio);
-      const splitPos = width * splitRatio;
-
-      const leftCount = Math.max(1, Math.min(remaining - 1, Math.round(remaining * splitRatio)));
-      const rightCount = remaining - leftCount;
-
-      splitArea(x, y, splitPos, height, leftCount);
-      splitArea(x + splitPos, y, width - splitPos, height, rightCount);
-    } else {
-      const minRatio = 0.3;
-      const maxRatio = 0.7;
-      const splitRatio = minRatio + Math.random() * (maxRatio - minRatio);
-      const splitPos = height * splitRatio;
-
-      const topCount = Math.max(1, Math.min(remaining - 1, Math.round(remaining * splitRatio)));
-      const bottomCount = remaining - topCount;
-
-      splitArea(x, y, width, splitPos, topCount);
-      splitArea(x, y + splitPos, width, height - splitPos, bottomCount);
-    }
-  };
-
-  splitArea(0, 0, 100, 100, count);
-
-  return layouts;
-};
-
-// 主组件
+// === 主组件 ===
 export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
   projects,
   selectedProjectIndex,
   onProjectChange,
 }) => {
-  // 使用动画引擎 - Spring 系统
-  const { variants, springPresets } = useAnimationEngine();
-  const linkInteractions = useSpringInteractions({ hoverScale: 1.05, tapScale: 0.95 });
-
-  // 使用智能视口检测 - 优化初始加载和刷新时的动画
+  const { variants } = useAnimationEngine();
+  const springInteractions = useSpringInteractions();
   const containerView = useSmartInView({ amount: 0.2, lcpOptimization: true });
 
-  // 使用 useMemo 根据 projects.length 动态计算布局
-  const geometryLayouts = useMemo(() => {
-    return generateGeometryLayout(projects.length);
-  }, [projects.length]);
-
   const handlePrevProject = () => {
-    if (selectedProjectIndex > 0) {
-      onProjectChange(selectedProjectIndex - 1);
-    }
+    if (selectedProjectIndex > 0) onProjectChange(selectedProjectIndex - 1);
   };
 
   const handleNextProject = () => {
-    if (selectedProjectIndex < projects.length - 1) {
-      onProjectChange(selectedProjectIndex + 1);
-    }
+    if (selectedProjectIndex < projects.length - 1) onProjectChange(selectedProjectIndex + 1);
   };
+
+  const project = projects[selectedProjectIndex];
+
+  const totalStars = projects.reduce((sum, p) => sum + (p.stars || 0), 0);
+  const totalForks = projects.reduce((sum, p) => sum + (p.forks || 0), 0);
 
   return (
     <ProjectsWrapper
@@ -718,220 +550,222 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
       animate={containerView.isInView ? 'visible' : 'hidden'}
       variants={variants.stagger}
     >
-      <CreativeSectionHeader>
-        <CreativeSectionTitle variants={variants.fadeIn}>开源 “关键词”</CreativeSectionTitle>
-        <SectionSubtitle variants={variants.fadeIn}>
-          让每一项技术栈都成音符，在代码的 “伟大的渺小” 里，拼出独属的开发美学
-        </SectionSubtitle>
-      </CreativeSectionHeader>
+      <SectionHeader>
+        <div>
+          <SectionTitle variants={variants.fadeIn}>开源 “关键词”</SectionTitle>
+          <SectionSubtitle variants={variants.fadeIn}>
+            每个仓库都是一个关键词，串起来就是我的开发词典
+          </SectionSubtitle>
+        </div>
 
-      <ProjectsGrid>
-        {/* 左侧：选中项目的详细信息 */}
-        <ProjectMainCard>
-          <AnimatePresence mode="wait">
-            {projects.length === 0 ? (
-              <EmptyState key="empty">
-                <FiFolderPlus />
-                <p>暂无精选项目</p>
-              </EmptyState>
-            ) : projects[selectedProjectIndex] ? (
-              <ProjectDetailContainer
-                key={projects[selectedProjectIndex].id}
-                initial={{ opacity: 0, x: 20, filter: 'blur(4px)' }}
-                animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, x: -20, filter: 'blur(4px)' }}
-                transition={{
-                  duration: 0.4,
-                  ease: [0.4, 0, 0.2, 1],
-                }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
-                onDragEnd={(e, { offset, velocity }) => {
-                  const swipe = Math.abs(offset.x) * velocity.x;
-                  if (swipe < -500) {
-                    handleNextProject();
-                  } else if (swipe > 500) {
-                    handlePrevProject();
-                  }
-                }}
-              >
-                {/* 项目基本信息 */}
-                <ProjectInfo>
-                  <ProjectHeader>
-                    <ProjectIcon size="large">
-                      {getLanguageIcon(projects[selectedProjectIndex].language).icon === 'code' ? (
-                        <FiCode size={28} />
+        <StatsRow variants={variants.fadeIn}>
+          <StatItem>
+            <StatValue>{projects.length}</StatValue>
+            <StatLabel>仓库</StatLabel>
+          </StatItem>
+          <StatItem>
+            <StatValue>{totalStars}</StatValue>
+            <StatLabel>总 Stars</StatLabel>
+          </StatItem>
+          <StatItem>
+            <StatValue>{totalForks}</StatValue>
+            <StatLabel>总 Forks</StatLabel>
+          </StatItem>
+        </StatsRow>
+      </SectionHeader>
+
+      {projects.length === 0 ? (
+        <EmptyState>
+          <FiFolderPlus />
+          <p>$ ls ~/repositories → empty</p>
+        </EmptyState>
+      ) : (
+        <FlatLayout variants={variants.fadeIn}>
+          {/* 左栏：ls 清单 */}
+          <ListColumn>
+            <PromptLine>
+              <span className="prompt">$</span>ls -1 ~/repositories
+            </PromptLine>
+
+            <RepoList>
+              {projects.map((p, index) => (
+                <RepoRow
+                  key={p.id}
+                  active={index === selectedProjectIndex}
+                  onClick={() => onProjectChange(index)}
+                  title={p.description}
+                >
+                  <span className="marker">▸</span>
+                  <span className="line-no">{String(index + 1).padStart(2, '0')}</span>
+                  <span
+                    className="lang-dot"
+                    style={{ background: getLanguageIcon(p.language).color }}
+                  />
+                  <span className="repo-name">{p.title}</span>
+                  <span className="leader" />
+                  <span className="stars">
+                    <FiStar size={10} />
+                    {p.stars || 0}
+                  </span>
+                </RepoRow>
+              ))}
+            </RepoList>
+
+            <CdLine>
+              <span className="prompt">$</span>
+              <span className="cmd">cd {project?.title || '...'}</span>
+              <span className="caret" />
+            </CdLine>
+          </ListColumn>
+
+          {/* 右栏：纯文本 README */}
+          <ReadmeColumn>
+            <Breadcrumb>
+              ~<span className="sep">/</span>repositories
+              <span className="sep">/</span>
+              {project?.slug || '...'}
+              <span className="sep">/</span>
+              <span className="file">README.md</span>
+            </Breadcrumb>
+
+            <AnimatePresence mode="wait">
+              {project ? (
+                <ReadmeBody
+                  key={project.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.2}
+                  onDragEnd={(_, { offset, velocity }) => {
+                    const swipe = Math.abs(offset.x) * velocity.x;
+                    if (swipe < -500) handleNextProject();
+                    else if (swipe > 500) handlePrevProject();
+                  }}
+                >
+                  <ReadmeHeader>
+                    <span className="lang-icon">
+                      {getLanguageIcon(project.language).icon === 'code' ? (
+                        <FiCode size={18} />
                       ) : (
                         <Icon
-                          name={getLanguageIcon(projects[selectedProjectIndex].language).icon}
-                          size={28}
-                          color={getLanguageIcon(projects[selectedProjectIndex].language).color}
+                          name={getLanguageIcon(project.language).icon}
+                          size={18}
+                          color={getLanguageIcon(project.language).color}
                         />
                       )}
-                    </ProjectIcon>
-                    <ProjectTitleWrapper>
-                      <ProjectTitle>{projects[selectedProjectIndex].title}</ProjectTitle>
-                      <ProjectDescription>{projects[selectedProjectIndex].description}</ProjectDescription>
-                    </ProjectTitleWrapper>
-                    <ViewDetailLink to={`/projects/${projects[selectedProjectIndex].slug}`}>
+                    </span>
+                    <ReadmeTitle>{project.title}</ReadmeTitle>
+                    <ViewDetailLink to={`/projects/${project.slug}`}>
                       查看详情
                       <FiArrowRight size={12} />
                     </ViewDetailLink>
-                  </ProjectHeader>
-                </ProjectInfo>
+                  </ReadmeHeader>
 
-                {/* 项目数据和雷达图 */}
-                <ProjectDataSection>
-                  {/* 左侧：项目数据 */}
-                  <DataCard>
-                    <DataItem>
-                      <DataLabel>
-                        <FiStar size={16} />
-                        Stars
-                      </DataLabel>
-                      <DataValue>{projects[selectedProjectIndex].stars || 0}</DataValue>
-                    </DataItem>
-                    <DataItem>
-                      <DataLabel>
-                        <FiGithub size={16} />
-                        Forks
-                      </DataLabel>
-                      <DataValue>{projects[selectedProjectIndex].forks || 0}</DataValue>
-                    </DataItem>
-                    <DataItem>
-                      <DataLabel>
-                        <FiCode size={16} />
-                        语言
-                      </DataLabel>
-                      <DataValue>
-                        <LanguageTag color={getLanguageIcon(projects[selectedProjectIndex].language).color}>
-                          {projects[selectedProjectIndex].language || 'N/A'}
-                        </LanguageTag>
-                      </DataValue>
-                    </DataItem>
-                    <DataItem>
-                      <DataLabel>
-                        <FiCalendar size={16} />
-                        更新时间
-                      </DataLabel>
-                      <DataValue>
-                        {projects[selectedProjectIndex].updatedAt
-                          ? formatDate(projects[selectedProjectIndex].updatedAt, 'YYYY-MM-DD')
-                          : '最近'}
-                      </DataValue>
-                    </DataItem>
+                  <ReadmeDescription>{project.description}</ReadmeDescription>
 
-                    {/* 项目链接 */}
+                  {/* 关键词：纯文本 #tag */}
+                  {(project as any).tags?.length > 0 && (
+                    <KeywordFlow>
+                      {(project as any).tags.slice(0, 8).map((tag: string) => (
+                        <KeywordTag key={tag}>#{tag}</KeywordTag>
+                      ))}
+                    </KeywordFlow>
+                  )}
+
+                  {/* 元信息：单行键值 */}
+                  <MetaRow>
+                    <MetaItem>
+                      <span className="k">stars</span>
+                      <span className="v">{project.stars || 0}</span>
+                    </MetaItem>
+                    <MetaItem>
+                      <span className="k">forks</span>
+                      <span className="v">{project.forks || 0}</span>
+                    </MetaItem>
+                    <MetaItem>
+                      <span className="k">lang</span>
+                      <span className="v">
+                        <LangName color={getLanguageIcon(project.language).color}>
+                          {project.language || 'N/A'}
+                        </LangName>
+                      </span>
+                    </MetaItem>
+                    <MetaItem>
+                      <span className="k">updated</span>
+                      <span className="v">
+                        {project.updatedAt ? formatDate(project.updatedAt, 'MM-DD') : '最近'}
+                      </span>
+                    </MetaItem>
+                  </MetaRow>
+
+                  {/* 指标条 + 文本链接 */}
+                  <ReadmeFooter>
+                    <MetricsBars>
+                      {calculateProjectRadarData(project, projects).map((metric) => (
+                        <MetricBar key={metric.label}>
+                          <span className="label">{metric.label}</span>
+                          <span className="track">
+                            {'▓'.repeat(Math.round((metric.value / metric.max) * 5))}
+                            <span className="off">
+                              {'░'.repeat(5 - Math.round((metric.value / metric.max) * 5))}
+                            </span>
+                          </span>
+                          <span className="value">{metric.value}</span>
+                        </MetricBar>
+                      ))}
+                    </MetricsBars>
+
                     <ProjectLinks>
-                      {projects[selectedProjectIndex].githubUrl && (
-                        <ProjectLink
-                          href={projects[selectedProjectIndex].githubUrl}
+                      {project.githubUrl && (
+                        <FlatLink
+                          href={project.githubUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          {...linkInteractions}
+                          {...springInteractions}
                         >
                           <FiGithub />
                           GitHub
-                        </ProjectLink>
+                        </FlatLink>
                       )}
-                      {projects[selectedProjectIndex].giteeUrl && (
-                        <ProjectLink
-                          href={projects[selectedProjectIndex].giteeUrl}
+                      {project.giteeUrl && (
+                        <FlatLink
+                          href={project.giteeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          {...linkInteractions}
+                          {...springInteractions}
                         >
                           <SiGitee />
                           Gitee
-                        </ProjectLink>
+                        </FlatLink>
                       )}
-                      {projects[selectedProjectIndex].demoUrl && (
-                        <ProjectLink
-                          href={projects[selectedProjectIndex].demoUrl}
+                      {project.demoUrl && (
+                        <FlatLink
+                          href={project.demoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          {...linkInteractions}
+                          {...springInteractions}
                         >
                           <FiExternalLink />
                           Demo
-                        </ProjectLink>
+                        </FlatLink>
                       )}
                     </ProjectLinks>
-                  </DataCard>
+                  </ReadmeFooter>
 
-                  {/* 雷达图 */}
-                  <RadarChartWrapper>
-                    <RadarChart data={calculateProjectRadarData(projects[selectedProjectIndex], projects)} size={280} />
-                  </RadarChartWrapper>
-                </ProjectDataSection>
-
-                {/* 手机端项目指示器 */}
-                <MobileProjectIndicator>
-                  <div className="dots">
+                  <MobileIndicator>
                     {projects.map((_, index) => (
-                      <Dot
-                        key={index}
-                        active={index === selectedProjectIndex}
-                        initial={false}
-                        animate={{ opacity: 1 }}
-                      />
+                      <Dot key={index} active={index === selectedProjectIndex} />
                     ))}
-                  </div>
-                </MobileProjectIndicator>
-              </ProjectDetailContainer>
-            ) : null}
-          </AnimatePresence>
-        </ProjectMainCard>
-
-        {/* 右侧：几何拼图 */}
-        <GeometryGridContainer>
-          {projects.map((project, index) => {
-            const layout = geometryLayouts[index];
-            if (!layout) {
-              console.error(`Layout missing for project ${index}`);
-              return null;
-            }
-
-            const blockArea = layout.width * layout.height;
-            const iconSize = blockArea > 1000 ? 36 : blockArea > 600 ? 28 : blockArea > 350 ? 22 : 16;
-
-            return (
-              <GeometryBlock
-                key={project.id}
-                isActive={selectedProjectIndex === index}
-                x={layout.x}
-                y={layout.y}
-                width={layout.width}
-                height={layout.height}
-                onClick={() => onProjectChange(index)}
-                // 添加呼吸动画和悬停效果
-                variants={breathingVariants}
-                initial="idle"
-                animate={selectedProjectIndex === index ? 'active' : 'idle'}
-                whileHover="hover"
-                // 随机延迟，使呼吸不同步，更有机
-                custom={index}
-              >
-                <GeometryBlockContent>
-                  {getLanguageIcon(project.language).icon === 'code' ? (
-                    <FiCode size={iconSize} style={{ color: getLanguageIcon(project.language).color }} />
-                  ) : (
-                    <Icon
-                      name={getLanguageIcon(project.language).icon}
-                      size={iconSize}
-                      color={getLanguageIcon(project.language).color}
-                    />
-                  )}
-
-                  {/* 悬停显示标题 - 只在块足够大时显示 */}
-                  {blockArea > 400 && <GeometryBlockTitle>{project.title}</GeometryBlockTitle>}
-                </GeometryBlockContent>
-              </GeometryBlock>
-            );
-          })}
-        </GeometryGridContainer>
-      </ProjectsGrid>
+                  </MobileIndicator>
+                </ReadmeBody>
+              ) : null}
+            </AnimatePresence>
+          </ReadmeColumn>
+        </FlatLayout>
+      )}
     </ProjectsWrapper>
   );
 };

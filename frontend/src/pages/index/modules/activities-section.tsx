@@ -29,42 +29,103 @@ import { FadeScrollContainer } from '@/components/common';
 import { useVirtualScroll } from '@/hooks/useVirtualScroll';
 import type { UserActivity } from '@/types';
 
-// Styled Components
+// Styled Components — 扁平终端风（tail -f 活动流，无卡片、无气泡）
+// flex: 1 让右栏占满 grid 拉伸高度，内部滚动区自动填满，与左栏底部对齐
 const ContentSection = styled(motion.section)`
-  margin-bottom: 2.5rem;
   overflow-x: hidden;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+`;
+
+// 等宽注释体标题，呼应全站 // 母题
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin: 0 0 1.5rem;
 `;
 
 const SectionTitle = styled(motion.h2)`
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin: 2rem 0 1.25rem;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: 0.02em;
 
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    width: 50px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent-color), transparent);
-    border-radius: 3px;
+  &::before {
+    content: '// ';
+    color: var(--accent-color);
   }
 `;
 
+const SectionSubtitle = styled(motion.p)`
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+  opacity: 0.85;
+  line-height: 1.6;
+`;
+
+// 提示行：$ tail -f ~/activity.log（与左栏 PromptLine 同构）
+const PromptLine = styled.div`
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  padding: 0 0 0.9rem;
+
+  .prompt {
+    color: var(--accent-color);
+    margin-right: 0.4rem;
+  }
+`;
+
+// 右上角 LIVE 标签，呼应左栏 IndexTag，带呼吸点表示"实时"
+const LiveTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  padding-bottom: 0.35rem;
+
+  & b {
+    color: var(--accent-color);
+    font-weight: 600;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    animation: live-pulse 2s ease-out infinite;
+  }
+
+  @keyframes live-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.45);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0);
+    }
+  }
+`;
+
+// 滚动窗：flex 填满右栏剩余高度，跟随左栏（文章+手记）高度自适应
 const ScrollWrapper = styled.div`
-  height: 500px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   -ms-overflow-style: none;
@@ -72,225 +133,95 @@ const ScrollWrapper = styled.div`
   &::-webkit-scrollbar {
     display: none;
   }
-  padding-bottom: 2rem; /* 防止底部被遮挡 */
-`;
-
-const ActivityItem = styled(motion.div)`
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.75rem 0; /* 增加一点内边距 */
-  position: relative;
-  cursor: pointer;
-  z-index: 1;
-  border-radius: 8px;
-  transition:
-    opacity 0.3s ease,
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background-color 0.2s ease;
-
-  /* 悬停时的背景高亮 */
-  &:hover {
-    background-color: rgba(var(--accent-rgb), 0.03);
-    z-index: 10; /* 提升层级 */
-  }
-
-  @media (max-width: 768px) {
-    padding-left: 0.5rem;
-  }
+  padding: 0.25rem 0 1rem;
 `;
 
 const ActivityGrid = styled(motion.div)`
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 0 0 0 10px;
-  position: relative;
-  min-height: 100%;
+`;
 
-  /* 连续的时间线 */
-  &::before {
-    content: '';
-    position: absolute;
-    left: 21px;
-    top: 1.5rem;
-    bottom: 1rem;
-    width: 1px;
-    background: linear-gradient(
-      180deg,
-      rgba(var(--accent-rgb), 0.1) 0%,
-      rgba(var(--accent-rgb), 0.2) 50%,
-      rgba(var(--accent-rgb), 0.1) 100%
-    );
-    z-index: 0;
-  }
+// 单条日志：终端行，hover 时整行染色
+const ActivityItem = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.65rem;
+  margin: 0 -0.65rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
 
-  /* 聚焦模式：当 Grid 被 hover 时，所有 Item 变暗 */
-  &:hover ${ActivityItem} {
-    opacity: 0.4;
-    filter: blur(0.5px); /* 增加模糊感，强化景深 */
-  }
+  &:hover {
+    background: rgba(var(--accent-rgb), 0.06);
 
-  /* 排除被 hover 的 Item，使其高亮 */
-  &:hover ${ActivityItem}:hover {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1.02) translateX(4px); /* 轻微放大并右移 */
-  }
-
-  @media (max-width: 768px) {
-    padding: 0;
-
-    /* 移动端取消 hover 效果，防止触摸时的闪烁 */
-    &:hover ${ActivityItem} {
-      opacity: 1;
-      filter: none;
+    .log-head .action {
+      color: var(--accent-color);
     }
-    &:hover ${ActivityItem}:hover {
-      transform: none;
+
+    .clamp-2 {
+      color: var(--text-primary);
     }
   }
 `;
 
 const ActivityHeader = styled.div`
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: nowrap;
-
-  @media (max-width: 768px) {
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-`;
-
-// 定义脉冲动画
-const pulse = keyframes`
-  0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0); }
-  100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0); }
-`;
-
-// 需要引入 keyframes
-import { keyframes } from '@emotion/react';
-
-const ActivityIcon = styled.div<{ color?: string }>`
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1.5px solid ${({ color }) => color || 'var(--accent-color)'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: var(--bg-primary);
-  box-shadow: 0 0 0 3px var(--bg-primary);
-  color: ${({ color }) => color || 'var(--accent-color)'};
-  font-size: 0.7rem;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  position: relative;
-  z-index: 2;
-
-  /* 悬停时的图标动画 */
-  ${ActivityItem}:hover & {
-    transform: scale(1.2);
-    border-color: ${({ color }) => color || 'var(--accent-color)'};
-    background-color: var(--bg-primary);
-    animation: ${pulse} 1.5s infinite; /* 添加脉冲动画 */
-  }
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
 `;
 
 const ActivityHeaderContent = styled.div`
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.5rem;
   overflow: hidden;
-  flex-wrap: wrap; /* 移动端允许换行 */
 `;
 
+// 动作文本：› adnaan 更新了文章
 const ActivityAuthor = styled.div`
-  font-size: 0.85rem;
-  font-weight: 500;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-  @media (max-width: 768px) {
-    font-size: 0.8rem;
-    flex-wrap: wrap;
-    white-space: normal;
+  & > .verb {
+    color: var(--accent-color);
+    font-weight: 400;
+    font-size: 0.72rem;
+    margin-right: 0.15rem;
   }
 `;
 
 const ActivityTime = styled.span`
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  opacity: 0.6;
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  opacity: 0.75;
   flex-shrink: 0;
   margin-left: auto;
-  font-family: monospace;
 `;
 
-const ActivityBubble = styled.div`
-  margin-left: calc(22px + 0.75rem); /* 对齐图标右侧 */
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  border-top-left-radius: 0.1rem;
-  background: rgba(107, 114, 126, 0.04);
-  color: var(--text-primary);
-  font-size: 0.8rem;
-  line-height: 1.5;
-  position: relative;
-
-  & > .clamp-3 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* 限制为2行，更紧凑 */
-    -webkit-box-orient: vertical;
-    text-overflow: ellipsis;
-  }
-
-  transition: background 0.2s ease;
-
-  [data-theme='dark'] & {
-    background: rgba(75, 85, 99, 0.15);
-  }
-
-  ${ActivityItem}:hover & {
-    background: rgba(107, 114, 126, 0.08);
-    [data-theme='dark'] & {
-      background: rgba(75, 85, 99, 0.25);
-    }
-  }
-
-  @media (max-width: 768px) {
-    margin-left: calc(22px + 0.5rem);
-    padding: 0.4rem 0.6rem;
-  }
-`;
-
+// 内容行：单行截断的日志负载，缩进对齐动作文本
 const ActivitySecondary = styled.div`
-  margin-left: calc(22px + 0.75rem);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
+  padding-left: 1.05rem; /* 对齐 › 之后的主文本 */
+  transition: color 0.15s ease;
 
-  & > .clamp-2 {
+  & .clamp-2 {
     overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1; /* 限制为1行 */
-    -webkit-box-orient: vertical;
+    display: block;
+    white-space: nowrap;
     text-overflow: ellipsis;
   }
-
-  @media (max-width: 768px) {
-    margin-left: calc(22px + 0.5rem);
-  }
 `;
+
 
 // 标题最大长度（用于在标题行显示）
 const MAX_TITLE_LENGTH = 15;
@@ -824,7 +755,6 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = () => {
 
   // 使用智能视口检测 - 修复刷新时可见度问题
   const containerView = useSmartInView({ amount: 0.2, lcpOptimization: true });
-  const titleView = useSmartInView({ amount: 0.3 });
 
   // 内部状态管理
   const [activities, setActivities] = useState<UserActivity[]>([]);
@@ -908,6 +838,7 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = () => {
     // 虚拟滚动计算
     handleVirtualScroll(scrollTop, clientHeight);
 
+
     // 距离底部200px时触发加载
     if (!loading && hasMore && scrollTop + clientHeight >= scrollHeight - 200) {
       const nextPage = page + 1;
@@ -937,17 +868,33 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = () => {
       animate={containerView.isInView ? 'visible' : 'hidden'}
       variants={variants.fadeIn}
     >
-      <SectionTitle
-        ref={titleView.ref as React.RefObject<HTMLHeadingElement>}
-        initial="hidden"
-        animate={titleView.isInView ? 'visible' : 'hidden'}
-        variants={variants.slideInLeft}
-        transition={springPresets.gentle}
-      >
-        文字的「茉莉雨」
-      </SectionTitle>
+      <SectionHeader>
+        <div>
+          <SectionTitle
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.5 }}
+            variants={variants.slideInLeft}
+            transition={springPresets.gentle}
+          >
+            文字的「茉莉雨」
+          </SectionTitle>
+          <SectionSubtitle>站点动态实时日志流</SectionSubtitle>
+        </div>
+        <LiveTag>
+          <span className="dot" />
+          LIVE · <b>{activities.length}</b> 条
+        </LiveTag>
+      </SectionHeader>
 
-      <FadeScrollContainer dependencies={[activities.length, loading]}>
+      <PromptLine>
+        <span className="prompt">$</span>tail -f ~/activity.log
+      </PromptLine>
+
+      <FadeScrollContainer
+        dependencies={[activities.length, loading]}
+        style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      >
         <ScrollWrapper ref={scrollRef} onScroll={handleScroll}>
           {activities.length === 0 && !loading ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>暂无活动</div>
@@ -960,7 +907,6 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = () => {
                 const actualIndex = visibleRange.start + index;
                 const formatted = formatActivityText(activity);
                 const activityTime = getTimeAgo(activity.timestamp);
-                const IconComponent = formatted.icon || FiMapPin;
 
                 return (
                   <ActivityItem
@@ -974,27 +920,18 @@ export const ActivitiesSection: React.FC<ActivitiesSectionProps> = () => {
                       }
                     }}
                   >
-                    <ActivityHeader>
-                      <ActivityIcon color={formatted.color}>
-                        <IconComponent size={12} />
-                      </ActivityIcon>
+                    <ActivityHeader className="log-head">
                       <ActivityHeaderContent>
-                        <ActivityAuthor>{formatted.header}</ActivityAuthor>
+                        <ActivityAuthor className="action">
+                          <span className="verb">›</span> {formatted.header}
+                        </ActivityAuthor>
                         <ActivityTime>{activityTime}</ActivityTime>
                       </ActivityHeaderContent>
                     </ActivityHeader>
                     {formatted.content && formatted.content.trim() && (
-                      <>
-                        {formatted.showBubble ? (
-                          <ActivityBubble>
-                            <span className="clamp-3">{formatted.content}</span>
-                          </ActivityBubble>
-                        ) : (
-                          <ActivitySecondary>
-                            <span className="clamp-2">{formatted.content}</span>
-                          </ActivitySecondary>
-                        )}
-                      </>
+                      <ActivitySecondary>
+                        <span className="clamp-2">{formatted.content}</span>
+                      </ActivitySecondary>
                     )}
                   </ActivityItem>
                 );

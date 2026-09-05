@@ -6,7 +6,7 @@ import { useAnimationEngine } from '@/utils/ui/animation';
 
 // === 布局 ===
 const ChartSection = styled(motion.section)`
-  margin: 2rem 0 4.5rem;
+  margin: 4.5rem 0 2.5rem;
 `;
 
 const SectionHeader = styled.div`
@@ -15,7 +15,7 @@ const SectionHeader = styled.div`
   align-items: flex-end;
   gap: 1.5rem;
   flex-wrap: wrap;
-  margin: 1rem 0 1.75rem;
+  margin: 0 0 2.25rem;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -66,14 +66,14 @@ const StatItem = styled.div`
 
 const StatValue = styled.span`
   font-family: var(--font-mono);
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent-color);
   line-height: 1.2;
 `;
 
 const StatLabel = styled.span`
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-tertiary);
   letter-spacing: 0.05em;
 `;
