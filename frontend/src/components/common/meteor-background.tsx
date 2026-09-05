@@ -11,26 +11,20 @@ const Canvas = styled.canvas`
   pointer-events: none;
   z-index: -1;
   background: transparent;
-  opacity: 0.8;
+  opacity: 0.6;
 `;
 
-// 天文学恒星光谱颜色 (大致模拟)
-const STAR_COLORS = [
-  '#9bb0ff', // O - 蓝
-  '#aabfff', // B - 蓝白
-  '#cad7ff', // A - 白
-  '#f8f7ff', // F - 黄白
-  '#fff4ea', // G - 黄 (太阳)
-  '#ffd2a1', // K - 橙
-  '#ffcc6f', // M - 红
-];
+// 低饱和度星光色：以白色为主，少量淡蓝/暖白点缀
+const STAR_COLORS = ['#f8f7ff', '#cad7ff', '#aabfff', '#fff4ea'];
 
 interface Star {
-  distance: number; // 距离旋转中心的距离
-  angle: number; // 当前角度
-  speed: number; // 角速度
-  radius: number; // 星星半径
-  color: string; // 颜色
+  x: number;
+  y: number;
+  radius: number;
+  color: string;
+  phase: number; // 呼吸相位
+  speed: number; // 呼吸速度
+  baseAlpha: number;
 }
 
 const MeteorBackground: React.FC = () => {
@@ -38,10 +32,6 @@ const MeteorBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const starsRef = useRef<Star[]>([]);
   const animationFrameRef = useRef<number>(0);
-
-  // 旋转中心 (北天极)
-  const centerRef = useRef({ x: 0, y: 0 });
-  // 鼠标位置
   const mouseRef = useRef({ x: -1000, y: -1000 });
 
   useEffect(() => {
@@ -57,6 +47,27 @@ const MeteorBackground: React.FC = () => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
     };
 
+    const initStars = () => {
+      const stars: Star[] = [];
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const count = Math.floor((width * height) / 9000); // 约 180~250 颗，随屏幕面积伸缩
+      const capped = Math.min(count, 260);
+
+      for (let i = 0; i < capped; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 0.9 + 0.3,
+          color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.4 + Math.random() * 0.6, // 缓慢呼吸
+          baseAlpha: 0.25 + Math.random() * 0.4,
+        });
+      }
+      starsRef.current = stars;
+    };
+
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
       canvas.width = window.innerWidth * dpr;
@@ -64,91 +75,49 @@ const MeteorBackground: React.FC = () => {
       canvas.style.width = `${window.innerWidth}px`;
       canvas.style.height = `${window.innerHeight}px`;
 
-      ctx.scale(dpr, dpr);
-
-      centerRef.current = {
-        x: window.innerWidth / 2,
-        y: window.innerHeight * 0.3,
-      };
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       initStars();
-    };
-
-    const initStars = () => {
-      const starCount = 600;
-      const stars: Star[] = [];
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
-      const maxDist = Math.sqrt(width * width + height * height);
-
-      for (let i = 0; i < starCount; i++) {
-        const distance = Math.random() * maxDist;
-        const speed = 0.0002 + Math.random() * 0.0004;
-
-        stars.push({
-          distance,
-          angle: Math.random() * Math.PI * 2,
-          speed: speed * (Math.random() > 0.5 ? 1 : -1),
-          radius: Math.random() * 1.2 + 0.3,
-          color: STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)],
-        });
-      }
-      starsRef.current = stars;
     };
 
     const animate = () => {
       if (!canvas || !ctx) return;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-      const center = centerRef.current;
       const mouse = mouseRef.current;
-      const threshold = 250;
+      const threshold = 120; // 轻柔的避让范围
       const thresholdSq = threshold * threshold;
 
       starsRef.current.forEach((star) => {
-        star.angle -= star.speed;
+        // 缓慢正弦呼吸
+        star.phase += 0.008 * star.speed;
+        const alpha = star.baseAlpha * (0.55 + 0.45 * Math.sin(star.phase));
 
-        const orbitX = center.x + Math.cos(star.angle) * star.distance;
-        const orbitY = center.y + Math.sin(star.angle) * star.distance;
+        let x = star.x;
+        let y = star.y;
 
-        let x = orbitX;
-        let y = orbitY;
-        let isRepelled = false;
-
+        // 鼠标经过时轻柔避让
         const dx = x - mouse.x;
         const dy = y - mouse.y;
         const distSq = dx * dx + dy * dy;
-
         if (distSq < thresholdSq) {
           const dist = Math.sqrt(distSq);
           const force = (threshold - dist) / threshold;
-          const power = force * force * 150;
-
+          const power = force * force * 40;
           if (dist > 0) {
             x += (dx / dist) * power;
             y += (dy / dist) * power;
-            isRepelled = true;
           }
         }
 
-        ctx.beginPath();
-        const trailAngle = star.speed > 0 ? 0.1 : -0.1;
-
-        ctx.arc(center.x, center.y, star.distance, star.angle, star.angle + trailAngle, star.speed < 0);
-
-        ctx.strokeStyle = star.color;
-        ctx.globalAlpha = 0.2;
-        ctx.lineWidth = star.radius * 0.5;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.globalAlpha = isRepelled ? 0.8 : Math.random() * 0.3 + 0.5;
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = star.color;
+        ctx.beginPath();
         ctx.arc(x, y, star.radius, 0, Math.PI * 2);
         ctx.fill();
       });
 
+      ctx.globalAlpha = 1;
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 

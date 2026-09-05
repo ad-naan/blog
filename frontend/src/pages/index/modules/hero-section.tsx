@@ -2,20 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { Variants, motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
 import {
-  FiCode,
   FiGithub,
   FiMail,
   FiMapPin,
-  FiTwitter,
-  FiCpu,
   FiLayers,
   FiActivity,
-  FiTerminal,
-  FiHash,
   FiArrowDown,
-  FiEye,
-  FiFileText,
-  FiFolder,
 } from 'react-icons/fi';
 import { useAnimationEngine, useSpringInteractions } from '@/utils/ui/animation';
 import { LazyImage } from '@/components/common';
@@ -66,379 +58,230 @@ const HeroContent = styled(motion.div)`
   z-index: 2;
 
   @media (max-width: 968px) {
-    display: none; /* Hide on mobile as requested */
+    order: 2;
+    align-items: center;
+    text-align: center;
   }
 `;
 
-// --- New Right Side Visuals: Profile Card ---
+// --- Right Side Visuals: Borderless Profile ---
 
-const CardStackContainer = styled(motion.div)`
+const ProfileVisual = styled(motion.div)`
   position: relative;
-  width: min(520px, 100%);
-  max-width: 100%;
-  perspective: 1000px;
+  width: min(380px, 100%);
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  overflow: visible;
+  text-align: center;
+  gap: 0.4rem;
+  z-index: 2;
 
   @media (max-width: 968px) {
     width: 100%;
     max-width: 440px;
-    height: auto;
     order: 1;
     margin: 0 auto 2rem;
-    transform: none;
   }
 
   @media (max-width: 768px) {
-    height: auto;
     margin-top: 0.5rem;
   }
 `;
 
-const ProfileGlassCard = styled(motion.div)`
-  width: min(520px, 100%);
-  background: var(--bg-primary, #ffffff);
-  border-radius: 28px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  box-shadow:
-    0 24px 50px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.03);
-  z-index: 2;
-  box-sizing: border-box;
+const AvatarWrap = styled.div`
+  position: relative;
+  width: 176px;
+  height: 176px;
+  margin-bottom: 1rem;
 
-  @media (max-width: 968px) {
-    margin: 0 auto;
-    width: min(440px, 100%);
-    padding: 1.5rem;
+  @media (max-width: 768px) {
+    width: 140px;
+    height: 140px;
   }
+`;
+
+const OnlineDot = styled.span`
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 16px;
+  height: 16px;
+  background: #27c93f;
+  border-radius: 50%;
+  border: 3px solid var(--bg-primary, #fff);
+  z-index: 3;
 
   [data-theme='dark'] & {
-    background: rgba(30, 30, 35, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.3);
+    border-color: rgb(var(--bg-primary-rgb, 20, 20, 24));
   }
 `;
 
-const CardHeader = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-bottom: 0.8rem;
-`;
-
-const OnlineStatus = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  margin-bottom: 0.2rem;
-
-  &::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: #27c93f;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(39, 201, 63, 0.2);
-  }
-`;
-
-const CardTitle = styled.h2`
-  font-size: 1.8rem;
-  font-weight: 800;
+const ProfileName = styled.h2`
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
   margin: 0;
   color: var(--text-primary);
   line-height: 1.2;
 `;
 
-const CardSubtitle = styled.p`
-  font-size: 0.85rem;
+const ProfileRole = styled.p`
+  font-size: 0.95rem;
   color: var(--text-secondary);
   margin: 0;
+  letter-spacing: 0.02em;
 `;
 
-const Divider = styled.div`
-  width: 100%;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.05);
-
-  [data-theme='dark'] & {
-    background: rgba(255, 255, 255, 0.05);
-  }
-`;
-
-const CardBodyGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 190px;
-  gap: 1.5rem;
-  position: relative;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-`;
-
-const LeftInfoCol = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  
-  @media (max-width: 768px) {
-    order: 2;
-    width: 100%;
-  }
-`;
-
-const RightAvatarCol = styled.div`
-  position: relative;
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
-  z-index: 5;
-  padding-top: 0.5rem;
-
-  @media (max-width: 768px) {
-    order: 1;
-    align-items: center;
-    justify-content: center;
-    padding-top: 0;
-    margin-bottom: 0.8rem;
-    width: 100%;
-  }
-`;
-
-const InfoItemRow = styled.div`
+const MetaLine = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  font-size: 0.85rem;
-  color: var(--text-primary);
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
   font-weight: 500;
 
   svg {
-    color: #3b82f6;
-    width: 16px;
-    height: 16px;
+    color: var(--accent-color);
     flex-shrink: 0;
+    opacity: 0.85;
   }
 
-  span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-`;
-
-const NewCardAvatar = styled.div`
-  width: 190px;
-  height: 190px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.15);
-
-  @media (max-width: 768px) {
-    width: 150px;
-    height: 150px;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  
-  [data-theme='dark'] & {
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(2, 132, 199, 0.2) 100%);
+  i {
+    font-style: normal;
+    opacity: 0.4;
   }
 `;
 
-const CodeBadge = styled.div`
-  position: absolute;
-  top: 10px;
-  right: -10px;
-  background: #3b82f6;
-  color: white;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 0.75rem;
-  font-weight: bold;
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
-  z-index: 6;
-  clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+const SkillLine = styled.div`
   font-family: var(--font-code);
-
-  @media (max-width: 768px) {
-    top: 8px;
-    right: 50px;
-    width: 30px;
-    height: 30px;
-    font-size: 0.65rem;
-  }
+  font-size: 0.8rem;
+  color: var(--accent-color);
+  margin-top: 0.9rem;
+  letter-spacing: 0.02em;
+  opacity: 0.9;
+  max-width: 100%;
 `;
 
-const TechStackTitle = styled.div`
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-`;
-
-const NewSkillPillsContainer = styled.div`
+const StatsRow = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-`;
-
-const NewSkillPill = styled.span`
-  font-size: 0.75rem;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: var(--bg-secondary, #f8fafc);
-  color: var(--text-secondary);
-  font-weight: 600;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: #e0f2fe;
-    color: #0284c7;
-  }
-  
-  [data-theme='dark'] & {
-    background: rgba(255, 255, 255, 0.05);
-    &:hover {
-      background: rgba(56, 189, 248, 0.2);
-      color: #38bdf8;
-    }
-  }
-`;
-
-const CardQuote = styled.div`
-  background: var(--bg-primary, #ffffff);
-  border-radius: 14px;
-  padding: 1rem 1.2rem;
-  position: absolute;
-  top: 212px;
-  right: -20px;
-  left: auto;
-  bottom: auto;
-  width: 220px;
-  box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.10),
-    0 0 0 1px rgba(0, 0, 0, 0.04);
-  z-index: 6;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-  
-  p {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: var(--text-primary);
-    font-weight: 700;
-    margin: 0;
-  }
-  
-  .quote-icon {
-    color: #3b82f6;
-    margin-bottom: 4px;
-    font-size: 1rem;
-    font-weight: bold;
-    opacity: 0.8;
-  }
-  
-  .wave-icon {
-    color: #3b82f6;
-    margin-top: 6px;
-    display: block;
-    text-align: right;
-    font-weight: bold;
-    font-size: 1rem;
-  }
-  
-  [data-theme='dark'] & {
-    background: rgba(30, 30, 35, 1);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-  }
-`;
-
-const StatsFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2.5rem;
-  padding: 1.2rem 2rem;
-  background: var(--bg-secondary, #f8fafc);
-  border-radius: 16px;
   align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-  }
-
-  [data-theme='dark'] & {
-    background: rgba(255, 255, 255, 0.03);
-  }
+  justify-content: center;
+  gap: 2.2rem;
+  margin-top: 1.6rem;
 `;
 
 const StatItem = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
-  flex: 1;
-  
+
   .label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
     font-weight: 500;
-    
-    svg {
-      color: #3b82f6;
-      width: 14px;
-      height: 14px;
-      opacity: 0.8;
-    }
+    letter-spacing: 0.08em;
   }
-  
+
   .value {
-    font-size: 1.2rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: var(--text-primary);
+    font-family: var(--font-heading);
+    line-height: 1.2;
   }
 `;
 
 const StatDivider = styled.div`
   width: 1px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.08);
+  height: 28px;
+  background: var(--border-color, rgba(0, 0, 0, 0.08));
 
   [data-theme='dark'] & {
     background: rgba(255, 255, 255, 0.08);
   }
 `;
+
+const NewCardAvatar = styled.div`
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  padding: 4px;
+  background: conic-gradient(
+    from 180deg,
+    rgba(var(--accent-rgb), 0.55),
+    rgba(var(--accent-rgb), 0.08) 45%,
+    rgba(var(--accent-rgb), 0.55) 90%
+  );
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--bg-primary, #fff);
+    z-index: 1;
+  }
+
+  img {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 50%;
+  }
+
+  [data-theme='dark'] & {
+    background: conic-gradient(
+      from 180deg,
+      rgba(var(--accent-rgb), 0.7),
+      rgba(var(--accent-rgb), 0.1) 45%,
+      rgba(var(--accent-rgb), 0.7) 90%
+    );
+  }
+`;
+
+const CodeBadge = styled.div`
+  position: absolute;
+  top: -4px;
+  left: -6px;
+  background: var(--bg-primary, #fff);
+  color: var(--accent-color);
+  height: 34px;
+  min-width: 34px;
+  padding: 0 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  z-index: 6;
+  font-family: var(--font-code);
+
+  @media (max-width: 768px) {
+    top: -2px;
+    left: -2px;
+    width: 30px;
+    height: 30px;
+    font-size: 0.65rem;
+  }
+
+  [data-theme='dark'] & {
+    background: rgb(30, 30, 35);
+  }
+`;
+
 
 const DecorCircle = styled(motion.div)`
   position: absolute;
@@ -555,24 +398,50 @@ const Description = styled(motion.p)`
   }
 `;
 
+// 胶囊标签：无图标、细描边，中间用一个小色点作为视觉锚点
 const SkillTags = styled(motion.div)`
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
   display: flex;
-  gap: 0.8rem;
-  opacity: 0.85;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 
   @media (max-width: 768px) {
     justify-content: center;
-    flex-wrap: wrap;
   }
 
   span {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 7px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition:
+      color 0.25s ease,
+      border-color 0.25s ease,
+      background-color 0.25s ease;
+
+    &::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      opacity: 0.75;
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      color: var(--accent-color);
+      border-color: rgba(var(--accent-rgb), 0.4);
+      background: rgba(var(--accent-rgb), 0.06);
+    }
   }
 `;
 
@@ -1157,15 +1026,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
           </Description>
 
           <SkillTags initial="hidden" animate={showRest ? 'visible' : 'hidden'} variants={variants.stagger}>
-            <motion.span variants={variants.listItem}>
-              <FiCode size={14} /> 开发者
-            </motion.span>
-            <motion.span variants={variants.listItem}>
-              <Icon name="helpCircle" size={14} /> 设计爱好者
-            </motion.span>
-            <motion.span variants={variants.listItem}>
-              <Icon name="share" size={14} /> 终身学习者
-            </motion.span>
+            <motion.span variants={variants.listItem}>开发者</motion.span>
+            <motion.span variants={variants.listItem}>设计爱好者</motion.span>
+            <motion.span variants={variants.listItem}>终身学习者</motion.span>
           </SkillTags>
 
           <SocialLinks
@@ -1225,107 +1088,74 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ siteSettings }) => {
           </SocialLinks>
         </HeroContent>
 
-        {/* Right Column: Static Profile Card */}
-        <CardStackContainer
-          initial={{ opacity: 0, scale: 0.9 }}
+        {/* Right Column: Borderless Profile */}
+        <ProfileVisual
+          initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: 'backOut', delay: 0.2 }}
         >
-          <div
+          {/* Layer 0: Decorative Background */}
+          <DecorCircle
             style={{
-              width: '100%',
-              height: '100%',
-              position: 'relative',
+              width: 420,
+              height: 420,
+              top: '3.5rem',
+              left: '50%',
+              marginLeft: -210,
             }}
-          >
-            {/* Layer 0: Decorative Background */}
-            <DecorCircle
-              style={{
-                width: 400,
-                height: 400,
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-              }}
-            />
+          />
 
-            {/* Layer 2: Glass Profile Card */}
-            <ProfileGlassCard>
-              <CardBodyGrid>
-                <LeftInfoCol>
-                  <CardHeader>
-                    <OnlineStatus>在线</OnlineStatus>
-                    <CardTitle>{siteSettings?.authorName || 'adnaan'}</CardTitle>
-                    <CardSubtitle>{siteSettings?.authorTitle || '全栈开发者 · 创造者 · 学习者'}</CardSubtitle>
-                  </CardHeader>
+          <AvatarWrap>
+            <NewCardAvatar>
+              <img
+                src={
+                  siteSettings?.avatar ||
+                  'https://foruda.gitee.com/avatar/1745582574310382271/5352827_adnaan_1745582574.png!avatar100'
+                }
+                alt={siteSettings?.authorName || 'Avatar'}
+              />
+            </NewCardAvatar>
+            <CodeBadge>{'</>'}</CodeBadge>
+            <OnlineDot aria-label="在线" />
+          </AvatarWrap>
 
-                  <Divider style={{ marginTop: '0.5rem' }} />
+          <ProfileName>{siteSettings?.authorName || 'adnaan'}</ProfileName>
+          <ProfileRole>{siteSettings?.authorTitle || '全栈开发者 · 创造者 · 学习者'}</ProfileRole>
 
-                  <InfoItemRow>
-                    <FiMapPin /> <span>{siteSettings?.location || '上海, 中国'}</span>
-                  </InfoItemRow>
-                  <InfoItemRow>
-                    <FiActivity /> <span>{siteSettings?.mbti || 'INFJ-T'}</span>
-                  </InfoItemRow>
-                  <InfoItemRow>
-                    <FiLayers /> <span>{siteSettings?.occupation?.split(' ')[0] || '全栈开发者'}</span>
-                  </InfoItemRow>
+          <MetaLine>
+            <FiMapPin size={13} />
+            <span>{siteSettings?.location || '上海, 中国'}</span>
+            <i>·</i>
+            <FiActivity size={13} />
+            <span>{siteSettings?.mbti || 'INFJ-T'}</span>
+            <i>·</i>
+            <FiLayers size={13} />
+            <span>{siteSettings?.occupation?.split(' ')[0] || '全栈开发者'}</span>
+          </MetaLine>
 
-                  <Divider />
+          <SkillLine>
+            {(siteSettings?.skills?.length ? siteSettings.skills : ['Vue', 'React', 'Node.js', 'Python', 'Java', 'Electron'])
+              .slice(0, 6)
+              .join(' / ')}
+          </SkillLine>
 
-                  <TechStackTitle>技术栈</TechStackTitle>
-                  <NewSkillPillsContainer>
-                    {(siteSettings?.skills?.length ? siteSettings.skills : ['Vue', 'React', 'Node.js', 'Python', 'Java', 'Electron']).slice(0, 6).map((skill, index) => (
-                      <NewSkillPill key={index}>{skill}</NewSkillPill>
-                    ))}
-                  </NewSkillPillsContainer>
-                </LeftInfoCol>
-
-                <RightAvatarCol>
-                  <NewCardAvatar>
-                    <img
-                      src={
-                        siteSettings?.avatar ||
-                        'https://foruda.gitee.com/avatar/1745582574310382271/5352827_adnaan_1745582574.png!avatar100'
-                      }
-                      alt={siteSettings?.authorName || 'Avatar'}
-                    />
-                  </NewCardAvatar>
-                  <CodeBadge>{'</>'}</CodeBadge>
-
-                  <CardQuote>
-                    <div className="quote-icon">“</div>
-                    <p>用代码构建想法<br />用设计传递温度</p>
-                    <div className="wave-icon">~</div>
-                  </CardQuote>
-                </RightAvatarCol>
-              </CardBodyGrid>
-
-              <StatsFooter>
-                <StatItem>
-                  <div className="label">
-                    <FiFileText /> 文章
-                  </div>
-                  <div className="value">{articleCount !== null ? `${articleCount}+` : '...'}</div>
-                </StatItem>
-                <StatDivider />
-                <StatItem>
-                  <div className="label">
-                    <FiFolder /> 项目
-                  </div>
-                  <div className="value">{projectCount !== null ? `${projectCount}+` : '...'}</div>
-                </StatItem>
-                <StatDivider />
-                <StatItem>
-                  <div className="label">
-                    <FiFileText /> 手记
-                  </div>
-                  <div className="value">{noteCount !== null ? `${noteCount}+` : '...'}</div>
-                </StatItem>
-              </StatsFooter>
-            </ProfileGlassCard>
-          </div>
-        </CardStackContainer>
+          <StatsRow>
+            <StatItem>
+              <div className="value">{articleCount !== null ? `${articleCount}+` : '…'}</div>
+              <div className="label">文章</div>
+            </StatItem>
+            <StatDivider />
+            <StatItem>
+              <div className="value">{projectCount !== null ? `${projectCount}+` : '…'}</div>
+              <div className="label">项目</div>
+            </StatItem>
+            <StatDivider />
+            <StatItem>
+              <div className="value">{noteCount !== null ? `${noteCount}+` : '…'}</div>
+              <div className="label">手记</div>
+            </StatItem>
+          </StatsRow>
+        </ProfileVisual>
 
         {/* Quote Footer - Full Width, Bottom Aligned */}
         <QuoteContainer

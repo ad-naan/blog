@@ -308,8 +308,6 @@ const DockItem = styled(motion.button) <{ active?: boolean }>`
   }
 `;
 
-const TabContent = styled.div`
-`;
 
 const TabContent = styled.div`
   width: 100%;
