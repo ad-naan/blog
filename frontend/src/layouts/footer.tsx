@@ -25,14 +25,21 @@ const FooterContainer = styled.footer`
   z-index: 10;
   overflow: hidden;
 
-  /* Dark mode: 半透明主背景，透出星空背景 */
+  /* Dark mode: 背景渐隐透出星空，同时保留主题色浸染，与亮色模式观感一致 */
   [data-theme='dark'] & {
-    background-image: linear-gradient(
-      to bottom,
-      rgba(var(--bg-primary-rgb), 0),
-      rgba(var(--bg-primary-rgb), 0.55) 72px,
-      rgba(var(--bg-primary-rgb), 0.55)
-    );
+    background-image:
+      linear-gradient(
+        to bottom,
+        rgba(var(--accent-rgb), 0.04),
+        rgba(var(--accent-rgb), 0.07) 72px,
+        rgba(var(--accent-rgb), 0.09)
+      ),
+      linear-gradient(
+        to bottom,
+        rgba(var(--bg-primary-rgb), 0),
+        rgba(var(--bg-primary-rgb), 0.55) 72px,
+        rgba(var(--bg-primary-rgb), 0.55)
+      );
   }
 `;
 
